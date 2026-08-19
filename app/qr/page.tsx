@@ -5,7 +5,7 @@ import { QRCodeCanvas } from "qrcode.react";
 export default function QRPage() {
   const masaSayisi = 20;
 
-  const siteUrl = "http://192.168.1.106:3000";
+  const siteUrl = "https://restoran-siparis-opal.vercel.app";
 
   return (
     <main className="min-h-screen bg-gray-100 p-6">
