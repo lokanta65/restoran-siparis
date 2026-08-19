@@ -385,8 +385,7 @@ function MenuPage() {
       ];
     });
 
-    setIsCartOpen(true);
-  };
+   };
 
   /* =========================================================
      ADET ARTIR
