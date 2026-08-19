@@ -7,7 +7,6 @@ type OrderItem = {
   name: string;
   price: number;
   quantity?: number;
-  specialRequest?: string;
 };
 
 type Order = {
@@ -16,6 +15,7 @@ type Order = {
   items: OrderItem[];
   total: number;
   status: string;
+  special_request?: string | null;
   created_at: string;
 };
 
@@ -510,13 +510,6 @@ export default function GarsonPage() {
                                       {item.price} TL
                                     </p>
 
-                                    {item.specialRequest && (
-                                      <p className="mt-1 text-sm font-semibold text-orange-600">
-                                        📝 Özel İstek:{" "}
-                                        {item.specialRequest}
-                                      </p>
-                                    )}
-
                                   </div>
 
                                   <span className="shrink-0 font-bold text-gray-900">
@@ -540,6 +533,19 @@ export default function GarsonPage() {
                             Ürün bilgisi bulunamadı.
                           </p>
 
+                        )}
+
+                        {/* ÖZEL İSTEK */}
+                        {order.special_request && (
+                          <div className="mt-4 rounded-xl border border-orange-200 bg-orange-50 p-4">
+                            <p className="font-bold text-orange-700">
+                              📝 Özel İstek
+                            </p>
+
+                            <p className="mt-1 text-sm font-semibold text-orange-800">
+                              {order.special_request}
+                            </p>
+                          </div>
                         )}
 
                         <div className="mt-4 flex items-center justify-between border-t pt-4">
