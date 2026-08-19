@@ -1,0 +1,69 @@
+{
+  "name": "restoran-siparis",
+  "version": "0.1.0",
+  "private": true,
+  "main": "electron.js",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "copy-static": "node copy-static.cjs",
+    "build-app": "npm run build && npm run copy-static",
+    "start": "node .next/standalone/server.js",
+    "lint": "eslint",
+    "electron": "electron electron.js",
+    "dist": "npm run build-app && electron-builder"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.112.3",
+    "next": "16.3.0",
+    "qrcode.react": "^4.2.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "electron": "^43.4.0",
+    "electron-builder": "^26.15.3",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.0",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  },
+  "build": {
+    "appId": "com.restoransiparis.app",
+    "productName": "Restoran Sipariş",
+    "afterPack": "after-pack.cjs",
+    "files": [
+      "**/*"
+    ],
+    "extraResources": [
+      {
+        "from": ".next/standalone",
+        "to": "standalone",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": ".next/static",
+        "to": "standalone/.next/static",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "public",
+        "to": "standalone/public",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "win": {
+      "target": "nsis"
+    }
+  }
+}
