@@ -541,6 +541,10 @@ export default function GarsonPage() {
     📝 Özel İstek
   </p>
 
+  <pre className="mt-2 overflow-x-auto rounded-lg bg-black p-3 text-xs text-white">
+    {JSON.stringify(order, null, 2)}
+  </pre>
+
   {order.special_request &&
   String(order.special_request).trim() !== "" ? (
     <p className="mt-2 rounded-lg bg-white p-3 text-base font-bold text-orange-900">
