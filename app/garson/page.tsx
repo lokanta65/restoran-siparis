@@ -536,26 +536,20 @@ export default function GarsonPage() {
                         )}
 
                         {/* ÖZEL İSTEK */}
-<div className="mt-4 rounded-xl border-2 border-orange-300 bg-orange-50 p-4">
-  <p className="font-bold text-orange-700">
-    📝 Özel İstek
-  </p>
-
-  <pre className="mt-2 overflow-x-auto rounded-lg bg-black p-3 text-xs text-white">
-    {JSON.stringify(order, null, 2)}
-  </pre>
-
-  {order.special_request &&
-  String(order.special_request).trim() !== "" ? (
-    <p className="mt-2 rounded-lg bg-white p-3 text-base font-bold text-orange-900">
-      {String(order.special_request)}
+{order.special_request &&
+String(order.special_request).trim() !== "" && (
+  <div className="mt-4 rounded-xl border-2 border-orange-300 bg-orange-50 p-4">
+    <p className="font-bold text-orange-700">
+      📝 Özel İstek
     </p>
-  ) : (
-    <p className="mt-2 text-sm font-medium text-gray-500">
-      Özel istek yok.
-    </p>
-  )}
-</div>
+
+    <div className="mt-2 rounded-lg bg-white p-3">
+      <p className="text-base font-bold text-orange-900">
+        {String(order.special_request)}
+      </p>
+    </div>
+  </div>
+)}
 
                         <div className="mt-4 flex items-center justify-between border-t pt-4">
 
