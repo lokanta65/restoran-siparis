@@ -306,16 +306,13 @@ function MenuPage() {
      KATEGORİLERE DÖN
      ========================================================= */
 
-  const goBackToCategories = () => {
-    setSelectedCategory(null);
-
-    setTimeout(() => {
-      window.scrollTo({
-        top: 0,
-        behavior: "smooth",
-      });
-    }, 50);
-  };
+ const goBackToCategories = () => {
+  setSelectedCategory(null);
+  window.scrollTo({
+    top: 0,
+    behavior: "smooth",
+  });
+};
 
   /* =========================================================
      SEPETE EKLE
@@ -1228,16 +1225,7 @@ function MenuPage() {
 
                     <div className="mt-7 space-y-3">
 
-                      {/* NORMAL KATEGORİLERE DÖN */}
-
-                      <button
-                        onClick={
-                          goBackToCategories
-                        }
-                        className="w-full rounded-xl border-2 border-[#e8c866] bg-[#e8c866] py-3 font-bold text-[#061b3d] shadow-lg transition hover:bg-[#f1d477] active:scale-95"
-                      >
-                        ← Kategorilere Dön
-                      </button>
+                     
 
                       {/* ÖNCEKİ / SONRAKİ */}
 
@@ -1305,13 +1293,13 @@ function MenuPage() {
           ===================================================== */}
 
       {selectedCategory !== null && (
-        <button
-          onClick={goBackToCategories}
-          className="fixed bottom-24 left-4 right-4 z-40 mx-auto max-w-3xl rounded-2xl border-2 border-[#e8c866] bg-[#e8c866] px-5 py-4 text-center font-bold text-[#061b3d] shadow-2xl transition hover:bg-[#f1d477] active:scale-95"
-        >
-          ← Kategorilere Dön
-        </button>
-      )}
+  <button
+    onClick={goBackToCategories}
+    className="fixed bottom-5 left-4 z-40 rounded-full border-2 border-[#e8c866] bg-[#e8c866] px-5 py-3 font-bold text-[#061b3d] shadow-2xl transition hover:bg-[#f1d477] active:scale-95"
+  >
+    ← Kategoriler
+  </button>
+)}
 
       {/* =====================================================
           SEPET
