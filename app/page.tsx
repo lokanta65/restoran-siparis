@@ -114,10 +114,7 @@ function MenuPage() {
         });
 
       if (error) {
-        console.error(
-          "Menü ürünleri alınamadı:",
-          error
-        );
+        console.error("Menü ürünleri alınamadı:", error);
 
         alert(
           `Menü yüklenemedi.\n\nKod: ${error.code}\nMesaj: ${error.message}`
@@ -165,11 +162,7 @@ function MenuPage() {
         });
 
       if (error) {
-        console.error(
-          "Siparişler alınamadı:",
-          error
-        );
-
+        console.error("Siparişler alınamadı:", error);
         setOrdersLoading(false);
         return;
       }
@@ -207,71 +200,51 @@ function MenuPage() {
             setOrders((currentOrders) => {
               if (
                 currentOrders.some(
-                  (order) =>
-                    order.id === newOrder.id
+                  (order) => order.id === newOrder.id
                 )
               ) {
                 return currentOrders;
               }
 
-              return [
-                newOrder,
-                ...currentOrders,
-              ];
+              return [newOrder, ...currentOrders];
             });
           }
 
           if (payload.eventType === "UPDATE") {
-            const updatedOrder =
-              payload.new as Order;
+            const updatedOrder = payload.new as Order;
 
             setOrders((currentOrders) => {
               if (
-                updatedOrder.status ===
-                  "teslim edildi" ||
-                updatedOrder.status ===
-                  "iptal edildi"
+                updatedOrder.status === "teslim edildi" ||
+                updatedOrder.status === "iptal edildi"
               ) {
                 return currentOrders.filter(
-                  (order) =>
-                    order.id !==
-                    updatedOrder.id
+                  (order) => order.id !== updatedOrder.id
                 );
               }
 
-              const exists =
-                currentOrders.some(
-                  (order) =>
-                    order.id ===
-                    updatedOrder.id
-                );
+              const exists = currentOrders.some(
+                (order) => order.id === updatedOrder.id
+              );
 
               if (exists) {
-                return currentOrders.map(
-                  (order) =>
-                    order.id ===
-                    updatedOrder.id
-                      ? updatedOrder
-                      : order
+                return currentOrders.map((order) =>
+                  order.id === updatedOrder.id
+                    ? updatedOrder
+                    : order
                 );
               }
 
-              return [
-                updatedOrder,
-                ...currentOrders,
-              ];
+              return [updatedOrder, ...currentOrders];
             });
           }
 
           if (payload.eventType === "DELETE") {
-            const deletedOrder =
-              payload.old as Order;
+            const deletedOrder = payload.old as Order;
 
             setOrders((currentOrders) =>
               currentOrders.filter(
-                (order) =>
-                  order.id !==
-                  deletedOrder.id
+                (order) => order.id !== deletedOrder.id
               )
             );
           }
@@ -293,9 +266,7 @@ function MenuPage() {
      ÜRÜN GÖRSELİ
      ========================================================= */
 
-  const getProductImage = (
-    item: MenuItem
-  ) => {
+  const getProductImage = (item: MenuItem) => {
     if (item.image_url) {
       return item.image_url;
     }
@@ -314,16 +285,13 @@ function MenuPage() {
      KATEGORİYE GİT
      ========================================================= */
 
-  const openCategory = (
-    category: string
-  ) => {
+  const openCategory = (category: string) => {
     setSelectedCategory(category);
 
     setTimeout(() => {
-      const element =
-        document.getElementById(
-          `category-${category}`
-        );
+      const element = document.getElementById(
+        `category-${category}`
+      );
 
       if (element) {
         element.scrollIntoView({
@@ -353,26 +321,20 @@ function MenuPage() {
      SEPETE EKLE
      ========================================================= */
 
-  const addToCart = (
-    item: MenuItem
-  ) => {
+  const addToCart = (item: MenuItem) => {
     setCart((currentCart) => {
-      const existingItem =
-        currentCart.find(
-          (cartItem) =>
-            cartItem.id === item.id
-        );
+      const existingItem = currentCart.find(
+        (cartItem) => cartItem.id === item.id
+      );
 
       if (existingItem) {
-        return currentCart.map(
-          (cartItem) =>
-            cartItem.id === item.id
-              ? {
-                  ...cartItem,
-                  quantity:
-                    cartItem.quantity + 1,
-                }
-              : cartItem
+        return currentCart.map((cartItem) =>
+          cartItem.id === item.id
+            ? {
+                ...cartItem,
+                quantity: cartItem.quantity + 1,
+              }
+            : cartItem
         );
       }
 
@@ -384,23 +346,19 @@ function MenuPage() {
         },
       ];
     });
-
-   };
+  };
 
   /* =========================================================
      ADET ARTIR
      ========================================================= */
 
-  const increaseQuantity = (
-    id: number
-  ) => {
+  const increaseQuantity = (id: number) => {
     setCart((currentCart) =>
       currentCart.map((item) =>
         item.id === id
           ? {
               ...item,
-              quantity:
-                item.quantity + 1,
+              quantity: item.quantity + 1,
             }
           : item
       )
@@ -411,24 +369,18 @@ function MenuPage() {
      ADET AZALT
      ========================================================= */
 
-  const decreaseQuantity = (
-    id: number
-  ) => {
+  const decreaseQuantity = (id: number) => {
     setCart((currentCart) =>
       currentCart
         .map((item) =>
           item.id === id
             ? {
                 ...item,
-                quantity:
-                  item.quantity - 1,
+                quantity: item.quantity - 1,
               }
             : item
         )
-        .filter(
-          (item) =>
-            item.quantity > 0
-        )
+        .filter((item) => item.quantity > 0)
     );
   };
 
@@ -454,37 +406,31 @@ function MenuPage() {
       return;
     }
 
-    const orderItems = cart.map(
-      (item) => ({
-        id: item.id,
-        name: item.name,
-        description:
-          item.description,
-        category: item.category,
-        image:
-          item.image_url ||
-          item.image ||
-          null,
-        price: item.price,
-        quantity:
-          item.quantity,
-      })
-    );
+    const orderItems = cart.map((item) => ({
+      id: item.id,
+      name: item.name,
+      description: item.description,
+      category: item.category,
+      image:
+        item.image_url ||
+        item.image ||
+        null,
+      price: item.price,
+      quantity: item.quantity,
+    }));
 
-    const { data, error } =
-      await supabase
-        .from("orders")
-        .insert({
-          table_number: masaNo,
-          items: orderItems,
-          total: total,
-          status: "yeni",
-          special_request:
-            specialRequest.trim() ||
-            null,
-        })
-        .select()
-        .single();
+    const { data, error } = await supabase
+      .from("orders")
+      .insert({
+        table_number: masaNo,
+        items: orderItems,
+        total: total,
+        status: "yeni",
+        special_request:
+          specialRequest.trim() || null,
+      })
+      .select()
+      .single();
 
     if (error) {
       console.error(
@@ -500,12 +446,10 @@ function MenuPage() {
     }
 
     if (data) {
-      setOrders(
-        (currentOrders) => [
-          data as Order,
-          ...currentOrders,
-        ]
-      );
+      setOrders((currentOrders) => [
+        data as Order,
+        ...currentOrders,
+      ]);
     }
 
     alert(
@@ -521,9 +465,7 @@ function MenuPage() {
      SİPARİŞ DÜZENLE
      ========================================================= */
 
-  const editOrder = async (
-    order: Order
-  ) => {
+  const editOrder = async (order: Order) => {
     if (order.status !== "yeni") {
       alert(
         "Bu sipariş artık hazırlanıyor. Bu aşamadan sonra sipariş düzenlenemez."
@@ -531,20 +473,18 @@ function MenuPage() {
       return;
     }
 
-    const confirmEdit =
-      window.confirm(
-        "Bu siparişi geri alıp düzenlemek istiyor musunuz?"
-      );
+    const confirmEdit = window.confirm(
+      "Bu siparişi geri alıp düzenlemek istiyor musunuz?"
+    );
 
     if (!confirmEdit) {
       return;
     }
 
-    const { error } =
-      await supabase
-        .from("orders")
-        .delete()
-        .eq("id", order.id);
+    const { error } = await supabase
+      .from("orders")
+      .delete()
+      .eq("id", order.id);
 
     if (error) {
       console.error(
@@ -561,46 +501,34 @@ function MenuPage() {
 
     const restoredItems: CartItem[] =
       Array.isArray(order.items)
-        ? order.items.map(
-            (item: any) => ({
-              id: Number(item.id || 0),
-              name:
-                item.name || "",
-              description:
-                item.description ||
-                "",
-              price: Number(
-                item.price || 0
-              ),
-              category:
-                item.category ||
-                "",
-              image:
-                item.image ||
-                null,
-              image_url:
-                item.image_url ||
-                null,
-              quantity: Number(
-                item.quantity || 1
-              ),
-            })
-          )
+        ? order.items.map((item: any) => ({
+            id: Number(item.id || 0),
+            name: item.name || "",
+            description:
+              item.description || "",
+            price: Number(item.price || 0),
+            category:
+              item.category || "",
+            image:
+              item.image || null,
+            image_url:
+              item.image_url || null,
+            quantity: Number(
+              item.quantity || 1
+            ),
+          }))
         : [];
 
     setCart(restoredItems);
 
     setSpecialRequest(
-      order.special_request ||
-        ""
+      order.special_request || ""
     );
 
-    setOrders(
-      (currentOrders) =>
-        currentOrders.filter(
-          (item) =>
-            item.id !== order.id
-        )
+    setOrders((currentOrders) =>
+      currentOrders.filter(
+        (item) => item.id !== order.id
+      )
     );
 
     setIsCartOpen(true);
@@ -615,9 +543,7 @@ function MenuPage() {
      SİPARİŞ İPTAL
      ========================================================= */
 
-  const cancelOrder = async (
-    order: Order
-  ) => {
+  const cancelOrder = async (order: Order) => {
     if (order.status !== "yeni") {
       alert(
         "Bu sipariş artık hazırlanıyor. Bu aşamadan sonra sipariş iptal edilemez."
@@ -634,13 +560,12 @@ function MenuPage() {
       return;
     }
 
-    const { error } =
-      await supabase
-        .from("orders")
-        .update({
-          status: "iptal edildi",
-        })
-        .eq("id", order.id);
+    const { error } = await supabase
+      .from("orders")
+      .update({
+        status: "iptal edildi",
+      })
+      .eq("id", order.id);
 
     if (error) {
       console.error(
@@ -655,12 +580,10 @@ function MenuPage() {
       return;
     }
 
-    setOrders(
-      (currentOrders) =>
-        currentOrders.filter(
-          (item) =>
-            item.id !== order.id
-        )
+    setOrders((currentOrders) =>
+      currentOrders.filter(
+        (item) => item.id !== order.id
+      )
     );
 
     alert(
@@ -672,9 +595,7 @@ function MenuPage() {
      SİPARİŞ DURUMU
      ========================================================= */
 
-  const statusText = (
-    status: string
-  ) => {
+  const statusText = (status: string) => {
     switch (status) {
       case "yeni":
         return "Yeni Sipariş";
@@ -696,9 +617,7 @@ function MenuPage() {
     }
   };
 
-  const statusStyle = (
-    status: string
-  ) => {
+  const statusStyle = (status: string) => {
     switch (status) {
       case "yeni":
         return "bg-red-100 text-red-700 border-red-200";
@@ -734,9 +653,7 @@ function MenuPage() {
       <header className="px-4 pb-8 pt-8 text-center">
 
         <div className="mx-auto mb-5 flex w-fit items-center gap-3">
-          <span className="text-2xl">
-            🇹🇷
-          </span>
+          <span className="text-2xl">🇹🇷</span>
 
           <span className="text-lg font-medium">
             Türkçe
@@ -815,10 +732,13 @@ function MenuPage() {
           </div>
 
           {ordersLoading ? (
+
             <p className="mt-4 text-sm text-gray-500">
               Siparişler yükleniyor...
             </p>
+
           ) : orders.length === 0 ? (
+
             <div className="mt-4 rounded-2xl bg-gray-50 p-5 text-center">
 
               <div className="text-4xl">
@@ -835,179 +755,173 @@ function MenuPage() {
               </p>
 
             </div>
+
           ) : (
+
             <div className="mt-5 space-y-4">
 
-              {orders.map(
-                (order) => (
-                  <div
-                    key={order.id}
-                    className="rounded-2xl border border-gray-200 bg-gray-50 p-4"
-                  >
+              {orders.map((order) => (
 
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div
+                  key={order.id}
+                  className="rounded-2xl border border-gray-200 bg-gray-50 p-4"
+                >
 
-                      <div>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 
-                        <p className="font-bold">
-                          Sipariş #
-                          {order.id}
-                        </p>
+                    <div>
 
-                        <p className="mt-1 text-xs text-gray-500">
-                          {new Date(
-                            order.created_at
-                          ).toLocaleString(
-                            "tr-TR"
-                          )}
-                        </p>
+                      <p className="font-bold">
+                        Sipariş #{order.id}
+                      </p>
 
-                      </div>
-
-                      <div
-                        className={`w-fit rounded-full border px-4 py-2 text-sm font-bold ${statusStyle(
-                          order.status
-                        )}`}
-                      >
-                        {statusText(
-                          order.status
-                        )}
-                      </div>
-
-                    </div>
-
-                    <div className="mt-4 space-y-2">
-
-                      {Array.isArray(
-                        order.items
-                      ) &&
-                        order.items.map(
-                          (
-                            item: any,
-                            index: number
-                          ) => (
-                            <div
-                              key={`${item.name}-${index}`}
-                              className="flex items-center justify-between gap-3 border-b border-gray-200 pb-2 last:border-0"
-                            >
-
-                              <div>
-
-                                <p className="font-semibold">
-                                  {item.name}
-                                </p>
-
-                                <p className="text-sm text-gray-500">
-                                  {Number(
-                                    item.quantity ||
-                                      1
-                                  )}{" "}
-                                  adet
-                                </p>
-
-                              </div>
-
-                              <span className="font-bold">
-                                {(
-                                  Number(
-                                    item.price
-                                  ) *
-                                  Number(
-                                    item.quantity ||
-                                      1
-                                  )
-                                ).toLocaleString(
-                                  "tr-TR"
-                                )}{" "}
-                                TL
-                              </span>
-
-                            </div>
-                          )
-                        )}
-
-                    </div>
-
-                    {order.special_request && (
-                      <div className="mt-3 rounded-xl bg-yellow-50 p-3 text-sm text-yellow-800">
-                        <span className="font-bold">
-                          📝 Özel İstek:
-                        </span>{" "}
-                        {
-                          order.special_request
-                        }
-                      </div>
-                    )}
-
-                    <div className="mt-4 flex items-center justify-between border-t border-gray-200 pt-3">
-
-                      <span className="font-bold">
-                        Toplam
-                      </span>
-
-                      <span className="text-lg font-bold text-red-700">
-                        {Number(
-                          order.total
+                      <p className="mt-1 text-xs text-gray-500">
+                        {new Date(
+                          order.created_at
                         ).toLocaleString(
                           "tr-TR"
-                        )}{" "}
-                        TL
-                      </span>
+                        )}
+                      </p>
 
                     </div>
 
-                    {order.status ===
-                      "yeni" && (
-                      <>
-                        <div className="mt-3 rounded-xl bg-red-50 p-3 text-center text-sm font-semibold text-red-700">
-                          Siparişiniz alındı.
-                          Hazırlanması
-                          bekleniyor.
-                        </div>
-
-                        <button
-                          onClick={() =>
-                            editOrder(
-                              order
-                            )
-                          }
-                          className="mt-3 w-full rounded-xl border-2 border-red-600 bg-white py-3 font-bold text-red-600 transition hover:bg-red-50 active:scale-95"
-                        >
-                          ✏️ Siparişi Düzenle
-                        </button>
-
-                        <button
-                          onClick={() =>
-                            cancelOrder(
-                              order
-                            )
-                          }
-                          className="mt-2 w-full rounded-xl border-2 border-gray-400 bg-white py-3 font-bold text-gray-600 transition hover:bg-gray-100 active:scale-95"
-                        >
-                          ✕ Siparişi İptal Et
-                        </button>
-                      </>
-                    )}
-
-                    {order.status ===
-                      "hazırlanıyor" && (
-                      <div className="mt-3 rounded-xl bg-yellow-50 p-3 text-center text-sm font-semibold text-yellow-700">
-                        👨‍🍳 Siparişiniz hazırlanıyor.
-                      </div>
-                    )}
-
-                    {order.status ===
-                      "hazır" && (
-                      <div className="mt-3 rounded-xl bg-blue-50 p-3 text-center text-sm font-semibold text-blue-700">
-                        🔔 Siparişiniz hazır!
-                      </div>
-                    )}
+                    <div
+                      className={`w-fit rounded-full border px-4 py-2 text-sm font-bold ${statusStyle(
+                        order.status
+                      )}`}
+                    >
+                      {statusText(
+                        order.status
+                      )}
+                    </div>
 
                   </div>
-                )
-              )}
+
+                  <div className="mt-4 space-y-2">
+
+                    {Array.isArray(order.items) &&
+                      order.items.map(
+                        (
+                          item: any,
+                          index: number
+                        ) => (
+
+                          <div
+                            key={`${item.name}-${index}`}
+                            className="flex items-center justify-between gap-3 border-b border-gray-200 pb-2 last:border-0"
+                          >
+
+                            <div>
+
+                              <p className="font-semibold">
+                                {item.name}
+                              </p>
+
+                              <p className="text-sm text-gray-500">
+                                {Number(
+                                  item.quantity || 1
+                                )}{" "}
+                                adet
+                              </p>
+
+                            </div>
+
+                            <span className="font-bold">
+                              {(
+                                Number(
+                                  item.price
+                                ) *
+                                Number(
+                                  item.quantity ||
+                                    1
+                                )
+                              ).toLocaleString(
+                                "tr-TR"
+                              )}{" "}
+                              TL
+                            </span>
+
+                          </div>
+
+                        )
+                      )}
+
+                  </div>
+
+                  {order.special_request && (
+                    <div className="mt-3 rounded-xl bg-yellow-50 p-3 text-sm text-yellow-800">
+                      <span className="font-bold">
+                        📝 Özel İstek:
+                      </span>{" "}
+                      {order.special_request}
+                    </div>
+                  )}
+
+                  <div className="mt-4 flex items-center justify-between border-t border-gray-200 pt-3">
+
+                    <span className="font-bold">
+                      Toplam
+                    </span>
+
+                    <span className="text-lg font-bold text-red-700">
+                      {Number(
+                        order.total
+                      ).toLocaleString(
+                        "tr-TR"
+                      )}{" "}
+                      TL
+                    </span>
+
+                  </div>
+
+                  {order.status === "yeni" && (
+                    <>
+
+                      <div className="mt-3 rounded-xl bg-red-50 p-3 text-center text-sm font-semibold text-red-700">
+                        Siparişiniz alındı.
+                        Hazırlanması
+                        bekleniyor.
+                      </div>
+
+                      <button
+                        onClick={() =>
+                          editOrder(order)
+                        }
+                        className="mt-3 w-full rounded-xl border-2 border-red-600 bg-white py-3 font-bold text-red-600 transition hover:bg-red-50 active:scale-95"
+                      >
+                        ✏️ Siparişi Düzenle
+                      </button>
+
+                      <button
+                        onClick={() =>
+                          cancelOrder(order)
+                        }
+                        className="mt-2 w-full rounded-xl border-2 border-gray-400 bg-white py-3 font-bold text-gray-600 transition hover:bg-gray-100 active:scale-95"
+                      >
+                        ✕ Siparişi İptal Et
+                      </button>
+
+                    </>
+                  )}
+
+                  {order.status === "hazırlanıyor" && (
+                    <div className="mt-3 rounded-xl bg-yellow-50 p-3 text-center text-sm font-semibold text-yellow-700">
+                      👨‍🍳 Siparişiniz hazırlanıyor.
+                    </div>
+                  )}
+
+                  {order.status === "hazır" && (
+                    <div className="mt-3 rounded-xl bg-blue-50 p-3 text-center text-sm font-semibold text-blue-700">
+                      🔔 Siparişiniz hazır!
+                    </div>
+                  )}
+
+                </div>
+
+              ))}
 
             </div>
+
           )}
 
         </div>
@@ -1068,8 +982,7 @@ function MenuPage() {
 
           </div>
 
-        ) : selectedCategory ===
-          null ? (
+        ) : selectedCategory === null ? (
 
           /* =================================================
              KATEGORİLER
@@ -1077,59 +990,55 @@ function MenuPage() {
 
           <div className="space-y-4">
 
-            {categoryNames.map(
-              (category) => {
+            {categoryNames.map((category) => {
 
-                const categoryItem =
-                  menuItems.find(
-                    (item) =>
-                      item.category ===
-                      category
-                  );
+              const categoryItem =
+                menuItems.find(
+                  (item) =>
+                    item.category ===
+                    category
+                );
 
-                return (
-                  <button
-                    key={category}
-                    onClick={() =>
-                      openCategory(
-                        category
-                      )
-                    }
-                    className="group w-full overflow-hidden rounded-3xl border border-[#caa94a]/40 bg-white text-left shadow-xl transition hover:scale-[1.01] active:scale-[0.98]"
-                  >
+              return (
+                <button
+                  key={category}
+                  onClick={() =>
+                    openCategory(category)
+                  }
+                  className="group w-full overflow-hidden rounded-3xl border border-[#caa94a]/40 bg-white text-left shadow-xl transition hover:scale-[1.01] active:scale-[0.98]"
+                >
 
-                    <div className="relative h-32 overflow-hidden sm:h-40">
+                  <div className="relative h-32 overflow-hidden sm:h-40">
 
-                      <img
-                        src={
-                          categoryImages[
-                            category
-                          ] ||
-                          getProductImage(
-                            categoryItem ||
-                              menuItems[0]
-                          )
-                        }
-                        alt={category}
-                        className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                      />
+                    <img
+                      src={
+                        categoryImages[
+                          category
+                        ] ||
+                        getProductImage(
+                          categoryItem ||
+                            menuItems[0]
+                        )
+                      }
+                      alt={category}
+                      className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                    />
 
-                      <div className="absolute inset-0 bg-black/45" />
+                    <div className="absolute inset-0 bg-black/45" />
 
-                      <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="absolute inset-0 flex items-center justify-center">
 
-                        <h3 className="px-4 text-center text-2xl font-bold text-white drop-shadow-lg sm:text-3xl">
-                          {category}
-                        </h3>
-
-                      </div>
+                      <h3 className="px-4 text-center text-2xl font-bold text-white drop-shadow-lg sm:text-3xl">
+                        {category}
+                      </h3>
 
                     </div>
 
-                  </button>
-                );
-              }
-            )}
+                  </div>
+
+                </button>
+              );
+            })}
 
           </div>
 
@@ -1140,6 +1049,8 @@ function MenuPage() {
              ================================================= */
 
           <div>
+
+            {/* ÜSTTEKİ KATEGORİLERE DÖN BUTONU */}
 
             <button
               onClick={
@@ -1165,164 +1076,180 @@ function MenuPage() {
 
             </div>
 
+            {/* KATEGORİLER */}
+
             <div className="space-y-12">
 
-              {categoryNames.map(
-                (category) => {
+              {categoryNames.map((category) => {
 
-                  const categoryItems =
-                    menuItems.filter(
-                      (item) =>
-                        item.category ===
-                        category
-                    );
+                const categoryItems =
+                  menuItems.filter(
+                    (item) =>
+                      item.category ===
+                      category
+                  );
 
-                  if (
-                    categoryItems.length ===
-                    0
-                  ) {
-                    return null;
-                  }
+                if (
+                  categoryItems.length ===
+                  0
+                ) {
+                  return null;
+                }
 
-                  return (
-                    <div
-                      key={category}
-                      id={`category-${category}`}
-                      className="scroll-mt-6"
-                    >
+                const categoryIndex =
+                  categoryNames.indexOf(
+                    category
+                  );
 
-                      {/* KATEGORİ BAŞLIĞI */}
+                return (
 
-                      <div className="mb-5 overflow-hidden rounded-3xl border border-[#caa94a]/40 bg-white shadow-xl">
+                  <div
+                    key={category}
+                    id={`category-${category}`}
+                    className="scroll-mt-6"
+                  >
 
-                        <div className="relative h-36 overflow-hidden">
+                    {/* KATEGORİ BAŞLIĞI */}
 
-                          <img
-                            src={
-                              categoryImages[
-                                category
-                              ] ||
-                              getProductImage(
-                                categoryItems[0]
-                              )
-                            }
-                            alt={category}
-                            className="h-full w-full object-cover"
-                          />
+                    <div className="mb-5 overflow-hidden rounded-3xl border border-[#caa94a]/40 bg-white shadow-xl">
 
-                          <div className="absolute inset-0 bg-black/50" />
+                      <div className="relative h-36 overflow-hidden">
 
-                          <div className="absolute inset-0 flex items-center justify-center">
+                        <img
+                          src={
+                            categoryImages[
+                              category
+                            ] ||
+                            getProductImage(
+                              categoryItems[0]
+                            )
+                          }
+                          alt={category}
+                          className="h-full w-full object-cover"
+                        />
 
-                            <h2 className="px-4 text-center text-2xl font-bold text-white sm:text-3xl">
-                              {category}
-                            </h2>
+                        <div className="absolute inset-0 bg-black/50" />
 
-                          </div>
+                        <div className="absolute inset-0 flex items-center justify-center">
+
+                          <h2 className="px-4 text-center text-2xl font-bold text-white sm:text-3xl">
+                            {category}
+                          </h2>
 
                         </div>
 
                       </div>
 
-                      {/* ÜRÜNLER */}
+                    </div>
 
-                      <div className="grid gap-5 sm:grid-cols-2">
+                    {/* ÜRÜNLER */}
 
-                        {categoryItems.map(
-                          (item) => (
-                            <div
-                              key={
-                                item.id
-                              }
-                              className="overflow-hidden rounded-3xl border border-white/10 bg-white shadow-xl"
-                            >
+                    <div className="grid gap-5 sm:grid-cols-2">
 
-                              <div className="relative h-48 overflow-hidden">
+                      {categoryItems.map(
+                        (item) => (
 
-                                <img
-                                  src={getProductImage(
-                                    item
-                                  )}
-                                  alt={
-                                    item.name
-                                  }
-                                  loading="lazy"
-                                  className="h-full w-full object-cover transition duration-300 hover:scale-105"
-                                />
+                          <div
+                            key={item.id}
+                            className="overflow-hidden rounded-3xl border border-white/10 bg-white shadow-xl"
+                          >
 
-                                <div className="absolute left-3 top-3 rounded-full bg-[#061b3d]/90 px-3 py-1 text-xs font-semibold text-[#e8c866]">
-                                  {
-                                    item.category
-                                  }
-                                </div>
+                            <div className="relative h-48 overflow-hidden">
 
+                              <img
+                                src={getProductImage(
+                                  item
+                                )}
+                                alt={
+                                  item.name
+                                }
+                                loading="lazy"
+                                className="h-full w-full object-cover transition duration-300 hover:scale-105"
+                              />
+
+                              <div className="absolute left-3 top-3 rounded-full bg-[#061b3d]/90 px-3 py-1 text-xs font-semibold text-[#e8c866]">
+                                {
+                                  item.category
+                                }
                               </div>
 
-                              <div className="p-5 text-gray-900">
+                            </div>
 
-                                <h3 className="text-xl font-bold">
-                                  {
-                                    item.name
+                            <div className="p-5 text-gray-900">
+
+                              <h3 className="text-xl font-bold">
+                                {
+                                  item.name
+                                }
+                              </h3>
+
+                              <p className="mt-2 min-h-[40px] text-sm text-gray-500">
+                                {
+                                  item.description
+                                }
+                              </p>
+
+                              <div className="mt-5 flex items-center justify-between gap-3">
+
+                                <span className="text-xl font-bold text-[#a47b13]">
+                                  {Number(
+                                    item.price
+                                  ).toLocaleString(
+                                    "tr-TR"
+                                  )}{" "}
+                                  TL
+                                </span>
+
+                                <button
+                                  onClick={() =>
+                                    addToCart(
+                                      item
+                                    )
                                   }
-                                </h3>
-
-                                <p className="mt-2 min-h-[40px] text-sm text-gray-500">
-                                  {
-                                    item.description
-                                  }
-                                </p>
-
-                                <div className="mt-5 flex items-center justify-between gap-3">
-
-                                  <span className="text-xl font-bold text-[#a47b13]">
-                                    {Number(
-                                      item.price
-                                    ).toLocaleString(
-                                      "tr-TR"
-                                    )}{" "}
-                                    TL
-                                  </span>
-
-                                  <button
-                                    onClick={() =>
-                                      addToCart(
-                                        item
-                                      )
-                                    }
-                                    className="rounded-xl bg-[#061b3d] px-4 py-3 font-bold text-white transition hover:bg-[#0b2d62] active:scale-95"
-                                  >
-                                    +
-                                    Sepete
-                                    Ekle
-                                  </button>
-
-                                </div>
+                                  className="rounded-xl bg-[#061b3d] px-4 py-3 font-bold text-white transition hover:bg-[#0b2d62] active:scale-95"
+                                >
+                                  + Sepete Ekle
+                                </button>
 
                               </div>
 
                             </div>
-                          )
-                        )}
 
-                      </div>
+                          </div>
 
-                      {/* KATEGORİLER ARASI GEÇİŞ */}
+                        )
+                      )}
 
-                      <div className="mt-7 flex gap-3">
+                    </div>
 
-                        {categoryNames.indexOf(
-                          category
-                        ) > 0 && (
+                    {/* =================================================
+                       KATEGORİLER ARASI GEÇİŞ
+                       ================================================= */}
+
+                    <div className="mt-7 space-y-3">
+
+                      {/* NORMAL KATEGORİLERE DÖN */}
+
+                      <button
+                        onClick={
+                          goBackToCategories
+                        }
+                        className="w-full rounded-xl border-2 border-[#e8c866] bg-[#e8c866] py-3 font-bold text-[#061b3d] shadow-lg transition hover:bg-[#f1d477] active:scale-95"
+                      >
+                        ← Kategorilere Dön
+                      </button>
+
+                      {/* ÖNCEKİ / SONRAKİ */}
+
+                      <div className="flex gap-3">
+
+                        {categoryIndex > 0 && (
                           <button
                             onClick={() => {
-                              const index =
-                                categoryNames.indexOf(
-                                  category
-                                );
-
                               const previousCategory =
                                 categoryNames[
-                                  index - 1
+                                  categoryIndex -
+                                    1
                                 ];
 
                               openCategory(
@@ -1331,26 +1258,19 @@ function MenuPage() {
                             }}
                             className="flex-1 rounded-xl border border-white/20 bg-white/10 py-3 text-sm font-semibold text-white transition hover:bg-white/20 active:scale-95"
                           >
-                            ↑ Önceki
-                            Kategori
+                            ↑ Önceki Kategori
                           </button>
                         )}
 
-                        {categoryNames.indexOf(
-                          category
-                        ) <
+                        {categoryIndex <
                           categoryNames.length -
                             1 && (
                           <button
                             onClick={() => {
-                              const index =
-                                categoryNames.indexOf(
-                                  category
-                                );
-
                               const nextCategory =
                                 categoryNames[
-                                  index + 1
+                                  categoryIndex +
+                                    1
                                 ];
 
                               openCategory(
@@ -1359,24 +1279,39 @@ function MenuPage() {
                             }}
                             className="flex-1 rounded-xl border border-[#e8c866]/50 bg-[#e8c866]/10 py-3 text-sm font-semibold text-[#e8c866] transition hover:bg-[#e8c866]/20 active:scale-95"
                           >
-                            ↓ Sonraki
-                            Kategori
+                            ↓ Sonraki Kategori
                           </button>
                         )}
 
                       </div>
 
                     </div>
-                  );
-                }
-              )}
+
+                  </div>
+
+                );
+              })}
 
             </div>
 
           </div>
+
         )}
 
       </section>
+
+      {/* =====================================================
+          EKRANIN ALTINDA SABİT KATEGORİLERE DÖN BUTONU
+          ===================================================== */}
+
+      {selectedCategory !== null && (
+        <button
+          onClick={goBackToCategories}
+          className="fixed bottom-24 left-4 right-4 z-40 mx-auto max-w-3xl rounded-2xl border-2 border-[#e8c866] bg-[#e8c866] px-5 py-4 text-center font-bold text-[#061b3d] shadow-2xl transition hover:bg-[#f1d477] active:scale-95"
+        >
+          ← Kategorilere Dön
+        </button>
+      )}
 
       {/* =====================================================
           SEPET
@@ -1415,8 +1350,7 @@ function MenuPage() {
               <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#e8c866] text-sm font-bold text-[#061b3d]">
                 {cart.reduce(
                   (sum, item) =>
-                    sum +
-                    item.quantity,
+                    sum + item.quantity,
                   0
                 )}
               </span>
@@ -1464,88 +1398,84 @@ function MenuPage() {
 
                 <div className="space-y-4">
 
-                  {cart.map(
-                    (item) => (
-                      <div
-                        key={item.id}
-                        className="border-b border-gray-200 pb-4"
-                      >
+                  {cart.map((item) => (
 
-                        <div className="flex items-start justify-between gap-3">
+                    <div
+                      key={item.id}
+                      className="border-b border-gray-200 pb-4"
+                    >
 
-                          <div className="min-w-0">
+                      <div className="flex items-start justify-between gap-3">
 
-                            <p className="font-semibold">
-                              {
-                                item.name
-                              }
-                            </p>
+                        <div className="min-w-0">
 
-                            <p className="mt-1 text-sm text-gray-500">
-                              {Number(
-                                item.price
-                              ).toLocaleString(
-                                "tr-TR"
-                              )}{" "}
-                              TL ×{" "}
-                              {
-                                item.quantity
-                              }
-                            </p>
+                          <p className="font-semibold">
+                            {item.name}
+                          </p>
 
-                          </div>
-
-                          <span className="shrink-0 font-bold text-[#a47b13]">
-                            {(
-                              Number(
-                                item.price
-                              ) *
-                              Number(
-                                item.quantity
-                              )
+                          <p className="mt-1 text-sm text-gray-500">
+                            {Number(
+                              item.price
                             ).toLocaleString(
                               "tr-TR"
                             )}{" "}
-                            TL
-                          </span>
+                            TL ×{" "}
+                            {item.quantity}
+                          </p>
 
                         </div>
 
-                        <div className="mt-3 flex items-center justify-end gap-2">
-
-                          <button
-                            onClick={() =>
-                              decreaseQuantity(
-                                item.id
-                              )
-                            }
-                            className="h-9 w-9 rounded-lg bg-gray-200 text-lg font-bold"
-                          >
-                            −
-                          </button>
-
-                          <span className="w-8 text-center font-bold">
-                            {
+                        <span className="shrink-0 font-bold text-[#a47b13]">
+                          {(
+                            Number(
+                              item.price
+                            ) *
+                            Number(
                               item.quantity
-                            }
-                          </span>
-
-                          <button
-                            onClick={() =>
-                              increaseQuantity(
-                                item.id
-                              )
-                            }
-                            className="h-9 w-9 rounded-lg bg-[#061b3d] text-lg font-bold text-white"
-                          >
-                            +
-                          </button>
-
-                        </div>
+                            )
+                          ).toLocaleString(
+                            "tr-TR"
+                          )}{" "}
+                          TL
+                        </span>
 
                       </div>
-                    )
-                  )}
+
+                      <div className="mt-3 flex items-center justify-end gap-2">
+
+                        <button
+                          onClick={() =>
+                            decreaseQuantity(
+                              item.id
+                            )
+                          }
+                          className="h-9 w-9 rounded-lg bg-gray-200 text-lg font-bold"
+                        >
+                          −
+                        </button>
+
+                        <span className="w-8 text-center font-bold">
+                          {
+                            item.quantity
+                          }
+                        </span>
+
+                        <button
+                          onClick={() =>
+                            increaseQuantity(
+                              item.id
+                            )
+                          }
+                          className="h-9 w-9 rounded-lg bg-[#061b3d] text-lg font-bold text-white"
+                        >
+                          +
+                        </button>
+
+                      </div>
+
+                    </div>
+
+                  ))}
 
                 </div>
 
