@@ -16,6 +16,7 @@ type Order = {
   total: number;
   status: string;
   special_request?: string | null;
+  is_closed?: boolean;
   created_at: string;
 };
 
@@ -130,6 +131,35 @@ export default function GarsonPage() {
         )
       );
     }
+  };
+  const closeTable = async (tableNumber: number) => {
+    const confirmed = window.confirm(
+      `Masa ${tableNumber} hesabını kapatmak istediğinize emin misiniz?`
+    );
+
+    if (!confirmed) return;
+
+    const { error } = await supabase
+      .from("orders")
+      .update({ is_closed: true })
+      .eq("table_number", tableNumber)
+      .eq("is_closed", false);
+
+    if (error) {
+      console.error("Hesap kapatılamadı:", error);
+      alert("Masa hesabı kapatılamadı.");
+      return;
+    }
+
+    setOrders((currentOrders) =>
+  currentOrders.filter(
+    (order) => order.table_number !== tableNumber
+  )
+);
+
+    setSelectedTable(null);
+
+    alert(`Masa ${tableNumber} hesabı kapatıldı.`);
   };
 
   const statusText = (status: string) => {
@@ -279,11 +309,12 @@ export default function GarsonPage() {
               );
 
               const aktifSiparis = masaOrders.find(
-                (order) =>
-                  order.status !== "teslim edildi" &&
-                  order.status !== "iptal edildi"
-              );
-
+  (order) =>
+    !order.is_closed &&
+    order.status !== "teslim edildi" &&
+    order.status !== "iptal edildi"
+);
+            
               let masaStyle =
                 "bg-gray-100 text-gray-700 border-gray-200";
 
@@ -411,21 +442,26 @@ export default function GarsonPage() {
                     </div>
 
                     <div className="rounded-2xl bg-green-50 px-5 py-3 text-right">
-
+<button
+  onClick={() => closeTable(Number(tableNumber))}
+  className="mt-3 w-full rounded-xl bg-green-600 px-4 py-3 font-bold text-white transition hover:bg-green-700 active:scale-95"
+>
+  💰 Hesabı Kapat
+</button>
                       <p className="text-sm font-semibold text-green-700">
                         💰 Masa Hesabı
                       </p>
 
                       <p className="mt-1 text-2xl font-bold text-green-800">
                         {tableOrders
-                          .reduce(
-                            (sum, order) =>
-                              sum +
-                              Number(order.total || 0),
-                            0
-                          )
-                          .toLocaleString("tr-TR")}{" "}
-                        TL
+  .filter((order) => !order.is_closed)
+  .reduce(
+    (sum, order) =>
+      sum + Number(order.total || 0),
+    0
+  )
+  .toLocaleString("tr-TR")}{" "}
+TL
                       </p>
 
                     </div>
