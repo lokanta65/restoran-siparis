@@ -16,6 +16,8 @@ type Order = {
   total: number;
   status: string;
   special_request?: string | null;
+  daily_order_number?: number | null;
+  order_date?: string | null;
   is_closed?: boolean;
   created_at: string;
 };
@@ -30,6 +32,7 @@ export default function GarsonPage() {
       const { data, error } = await supabase
         .from("orders")
         .select("*")
+        .eq("is_closed", false)
         .order("created_at", { ascending: false });
 
       if (error) {
@@ -60,6 +63,10 @@ export default function GarsonPage() {
           if (payload.eventType === "INSERT") {
             const newOrder = payload.new as Order;
 
+            if (newOrder.is_closed) {
+              return;
+            }
+
             setOrders((currentOrders) => {
               if (
                 currentOrders.some(
@@ -75,6 +82,16 @@ export default function GarsonPage() {
 
           if (payload.eventType === "UPDATE") {
             const updatedOrder = payload.new as Order;
+
+            if (updatedOrder.is_closed) {
+              setOrders((currentOrders) =>
+                currentOrders.filter(
+                  (order) => order.id !== updatedOrder.id
+                )
+              );
+
+              return;
+            }
 
             setOrders((currentOrders) =>
               currentOrders.map((order) =>
@@ -132,6 +149,7 @@ export default function GarsonPage() {
       );
     }
   };
+
   const closeTable = async (tableNumber: number) => {
     const confirmed = window.confirm(
       `Masa ${tableNumber} hesabını kapatmak istediğinize emin misiniz?`
@@ -152,10 +170,10 @@ export default function GarsonPage() {
     }
 
     setOrders((currentOrders) =>
-  currentOrders.filter(
-    (order) => order.table_number !== tableNumber
-  )
-);
+      currentOrders.filter(
+        (order) => order.table_number !== tableNumber
+      )
+    );
 
     setSelectedTable(null);
 
@@ -243,7 +261,6 @@ export default function GarsonPage() {
               </p>
             </div>
 
-            {/* YÖNETİM PANELİ */}
             <a
               href="/yonetim"
               className="inline-flex w-fit items-center justify-center rounded-xl bg-white px-5 py-3 font-bold text-red-700 shadow transition hover:bg-gray-100 active:scale-95"
@@ -305,16 +322,16 @@ export default function GarsonPage() {
 
               const masaOrders = orders.filter(
                 (order) =>
-                  order.table_number === masaNo
+                  order.table_number === masaNo &&
+                  !order.is_closed
               );
 
               const aktifSiparis = masaOrders.find(
-  (order) =>
-    !order.is_closed &&
-    order.status !== "teslim edildi" &&
-    order.status !== "iptal edildi"
-);
-            
+                (order) =>
+                  order.status !== "teslim edildi" &&
+                  order.status !== "iptal edildi"
+              );
+
               let masaStyle =
                 "bg-gray-100 text-gray-700 border-gray-200";
 
@@ -414,6 +431,7 @@ export default function GarsonPage() {
                     groups[order.table_number].push(order);
 
                     return groups;
+
                   },
                   {}
                 )
@@ -442,27 +460,34 @@ export default function GarsonPage() {
                     </div>
 
                     <div className="rounded-2xl bg-green-50 px-5 py-3 text-right">
-<button
-  onClick={() => closeTable(Number(tableNumber))}
-  className="mt-3 w-full rounded-xl bg-green-600 px-4 py-3 font-bold text-white transition hover:bg-green-700 active:scale-95"
->
-  💰 Hesabı Kapat
-</button>
+
                       <p className="text-sm font-semibold text-green-700">
                         💰 Masa Hesabı
                       </p>
 
                       <p className="mt-1 text-2xl font-bold text-green-800">
                         {tableOrders
-  .filter((order) => !order.is_closed)
-  .reduce(
-    (sum, order) =>
-      sum + Number(order.total || 0),
-    0
-  )
-  .toLocaleString("tr-TR")}{" "}
-TL
+                          .filter(
+                            (order) => !order.is_closed
+                          )
+                          .reduce(
+                            (sum, order) =>
+                              sum +
+                              Number(order.total || 0),
+                            0
+                          )
+                          .toLocaleString("tr-TR")}{" "}
+                        TL
                       </p>
+
+                      <button
+                        onClick={() =>
+                          closeTable(Number(tableNumber))
+                        }
+                        className="mt-3 w-full rounded-xl bg-green-600 px-4 py-3 font-bold text-white transition hover:bg-green-700 active:scale-95"
+                      >
+                        💰 Hesabı Kapat
+                      </button>
 
                     </div>
 
@@ -473,7 +498,7 @@ TL
                 {/* MASANIN SİPARİŞLERİ */}
                 <div className="space-y-4 p-4 sm:p-5">
 
-                  {tableOrders.map((order) => (
+                  {tableOrders.map((order, orderIndex) => (
 
                     <div
                       key={order.id}
@@ -488,8 +513,11 @@ TL
 
                         <div>
 
+                          {/* GÜNLÜK SİPARİŞ NUMARASI */}
                           <p className="font-bold text-gray-900">
-                            Sipariş #{order.id}
+                            Sipariş #
+                            {order.daily_order_number ??
+                              (tableOrders.length - orderIndex)}
                           </p>
 
                           <p className="mt-1 text-sm text-gray-500">
@@ -572,20 +600,27 @@ TL
                         )}
 
                         {/* ÖZEL İSTEK */}
-{order.special_request &&
-String(order.special_request).trim() !== "" && (
-  <div className="mt-4 rounded-xl border-2 border-orange-300 bg-orange-50 p-4">
-    <p className="font-bold text-orange-700">
-      📝 Özel İstek
-    </p>
+                        {order.special_request &&
+                        String(order.special_request).trim() !== "" && (
 
-    <div className="mt-2 rounded-lg bg-white p-3">
-      <p className="text-base font-bold text-orange-900">
-        {String(order.special_request)}
-      </p>
-    </div>
-  </div>
-)}
+                          <div className="mt-4 rounded-xl border-2 border-orange-300 bg-orange-50 p-4">
+
+                            <p className="font-bold text-orange-700">
+                              📝 Özel İstek
+                            </p>
+
+                            <div className="mt-2 rounded-lg bg-white p-3">
+
+                              <p className="text-base font-bold text-orange-900">
+                                {String(
+                                  order.special_request
+                                )}
+                              </p>
+
+                            </div>
+
+                          </div>
+                        )}
 
                         <div className="mt-4 flex items-center justify-between border-t pt-4">
 

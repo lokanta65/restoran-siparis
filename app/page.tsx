@@ -16,9 +16,9 @@ type MenuItem = {
   category: string;
   image?: string | null;
   image_url?: string | null;
+  is_active?: boolean;
   created_at?: string;
 };
-
 type CartItem = MenuItem & {
   quantity: number;
 };
@@ -107,8 +107,8 @@ function MenuPage() {
       const { data, error } = await supabase
         .from("menu_items")
         .select(
-          "id,name,description,price,category,image,image_url,created_at"
-        )
+  "id,name,description,price,category,image,image_url,is_active,created_at"
+)
         .order("id", {
           ascending: true,
         });
@@ -125,19 +125,22 @@ function MenuPage() {
       }
 
       if (data) {
-        setMenuItems(
-          data.map((item: any) => ({
-            id: Number(item.id),
-            name: item.name || "",
-            description: item.description || "",
-            price: Number(item.price || 0),
-            category: item.category || "",
-            image: item.image || null,
-            image_url: item.image_url || null,
-            created_at: item.created_at,
-          }))
-        );
-      }
+  setMenuItems(
+    data
+      .filter((item: any) => item.is_active !== false)
+      .map((item: any) => ({
+        id: Number(item.id),
+        name: item.name || "",
+        description: item.description || "",
+        price: Number(item.price || 0),
+        category: item.category || "",
+        image: item.image || null,
+        image_url: item.image_url || null,
+        is_active: item.is_active !== false,
+        created_at: item.created_at,
+      }))
+  );
+}
 
       setMenuLoading(false);
     };
@@ -145,18 +148,20 @@ function MenuPage() {
     fetchMenuItems();
   }, []);
 
-  /* =========================================================
+    /* =========================================================
      SİPARİŞLERİ GETİR
      ========================================================= */
 
   useEffect(() => {
     const fetchOrders = async () => {
+      setOrdersLoading(true);
+
       const { data, error } = await supabase
         .from("orders")
-        .select("*")
+        .select(
+          "id,table_number,items,total,status,special_request,created_at"
+        )
         .eq("table_number", masaNo)
-        .neq("status", "teslim edildi")
-        .neq("status", "iptal edildi")
         .order("created_at", {
           ascending: false,
         });
@@ -416,16 +421,33 @@ function MenuPage() {
       quantity: item.quantity,
     }));
 
-    const { data, error } = await supabase
-      .from("orders")
-      .insert({
-        table_number: masaNo,
-        items: orderItems,
-        total: total,
-        status: "yeni",
-        special_request:
-          specialRequest.trim() || null,
-      })
+   const today = new Date().toISOString().split("T")[0];
+
+const { data: lastOrder } = await supabase
+  .from("orders")
+  .select("daily_order_number")
+  .eq("order_date", today)
+  .order("daily_order_number", { ascending: false })
+  .limit(1)
+  .maybeSingle();
+
+const nextDailyOrderNumber =
+  (lastOrder?.daily_order_number || 0) + 1;
+
+const { data, error } = await supabase
+  .from("orders")
+  .insert({
+    table_number: masaNo,
+    items: orderItems,
+    total: total,
+    status: "yeni",
+    special_request:
+      specialRequest.trim() || null,
+
+    daily_order_number: nextDailyOrderNumber,
+    order_date: today,
+  })
+  
       .select()
       .single();
 
