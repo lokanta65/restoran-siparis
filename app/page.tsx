@@ -105,13 +105,14 @@ function MenuPage() {
       setMenuLoading(true);
 
       const { data, error } = await supabase
-        .from("menu_items")
-        .select(
-  "id,name,description,price,category,image,image_url,is_active,created_at"
-)
-        .order("id", {
-          ascending: true,
-        });
+  .from("menu_items")
+  .select(
+    "id,name,description,price,category,image,image_url,is_active,created_at"
+  )
+  .eq("is_active", true)
+  .order("id", {
+    ascending: true,
+  });
 
       if (error) {
         console.error("Menü ürünleri alınamadı:", error);
@@ -126,9 +127,7 @@ function MenuPage() {
 
       if (data) {
   setMenuItems(
-    data
-      .filter((item: any) => item.is_active !== false)
-      .map((item: any) => ({
+    data.map((item: any) => ({
         id: Number(item.id),
         name: item.name || "",
         description: item.description || "",
@@ -136,7 +135,7 @@ function MenuPage() {
         category: item.category || "",
         image: item.image || null,
         image_url: item.image_url || null,
-        is_active: item.is_active !== false,
+        is_active: true,
         created_at: item.created_at,
       }))
   );
