@@ -136,13 +136,9 @@ export default function GarsonPage() {
     orderId: number,
     newStatus: string
   ) => {
-    /*
-      =========================================================
-      TESLİM EDİLDİ
-      =========================================================
-      Siparişin status alanını değiştirmiyoruz.
-      Doğrudan orders tablosundan tamamen siliyoruz.
-    */
+    // =====================================================
+    // TESLİM EDİLDİ → SİPARİŞİ SUPABASE'DEN TAMAMEN SİL
+    // =====================================================
 
     if (newStatus === "teslim edildi") {
       const confirmed = window.confirm(
@@ -154,15 +150,10 @@ export default function GarsonPage() {
       }
 
       console.log(
-        "SİPARİŞ SİLME BAŞLADI. ID:",
+        "TESLİM EDİLDİ - SİPARİŞ SİLİNİYOR. ID:",
         orderId
       );
 
-      /*
-        DELETE + select:
-        Gerçekten bir kayıt silindiyse deletedData içinde
-        silinen kayıt dönecek.
-      */
       const { data: deletedData, error } = await supabase
         .from("orders")
         .delete()
@@ -175,6 +166,7 @@ export default function GarsonPage() {
         error,
       });
 
+      // Supabase hata verdi
       if (error) {
         console.error(
           "Sipariş silinemedi:",
@@ -188,55 +180,24 @@ export default function GarsonPage() {
         return;
       }
 
-      /*
-        DELETE başarılı görünse bile gerçekten bir kayıt
-        silinmiş mi kontrol ediyoruz.
-      */
+      // Hiçbir kayıt silinmediyse
       if (!deletedData || deletedData.length === 0) {
         console.error(
-          "DELETE çalıştı ancak hiçbir kayıt silinmedi.",
+          "DELETE işlemi 0 kayıt döndürdü.",
           {
             orderId,
             deletedData,
           }
         );
 
-        /*
-          İkinci kontrol:
-          Kayıt hâlâ veritabanında mı?
-        */
-        const { data: stillExists, error: checkError } =
-          await supabase
-            .from("orders")
-            .select("id,status,is_closed")
-            .eq("id", orderId)
-            .maybeSingle();
-
-        console.error(
-          "SİLME SONRASI KAYIT KONTROLÜ:",
-          {
-            stillExists,
-            checkError,
-          }
+        alert(
+          `Sipariş #${orderId} Supabase'den silinemedi.\n\nDELETE işlemi herhangi bir kayıt döndürmedi.`
         );
-
-        if (stillExists) {
-          alert(
-            `Sipariş #${orderId} Supabase'den silinemedi.\n\nKayıt hâlâ veritabanında bulunuyor.`
-          );
-        } else {
-          alert(
-            `Sipariş #${orderId} sistemden silindi.`
-          );
-        }
 
         return;
       }
 
-      /*
-        Supabase gerçekten sildiyse Garson ekranından da
-        hemen kaldır.
-      */
+      // Garson ekranından kaldır
       setOrders((currentOrders) =>
         currentOrders.filter(
           (order) => order.id !== orderId
@@ -244,7 +205,7 @@ export default function GarsonPage() {
       );
 
       console.log(
-        "SİPARİŞ TAMAMEN SİLİNDİ. ID:",
+        "SİPARİŞ BAŞARIYLA SİLİNDİ. ID:",
         orderId
       );
 
@@ -255,12 +216,9 @@ export default function GarsonPage() {
       return;
     }
 
-    /*
-      =========================================================
-      DİĞER DURUMLAR
-      =========================================================
-      Hazırlanıyor / Hazır normal UPDATE.
-    */
+    // =====================================================
+    // DİĞER DURUMLAR
+    // =====================================================
 
     const { data, error } = await supabase
       .from("orders")
@@ -300,7 +258,9 @@ export default function GarsonPage() {
       `Masa ${tableNumber} hesabını kapatmak istediğinize emin misiniz?`
     );
 
-    if (!confirmed) return;
+    if (!confirmed) {
+      return;
+    }
 
     const { error } = await supabase
       .from("orders")
@@ -840,6 +800,7 @@ export default function GarsonPage() {
                                   </div>
 
                                 </div>
+
                               )}
 
                             <div className="mt-4 flex items-center justify-between border-t pt-4">
