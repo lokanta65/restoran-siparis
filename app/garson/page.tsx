@@ -33,6 +33,8 @@ export default function GarsonPage() {
         .from("orders")
         .select("*")
         .eq("is_closed", false)
+        .neq("status", "teslim edildi")
+        .neq("status", "iptal edildi")
         .order("created_at", { ascending: false });
 
       if (error) {
@@ -63,7 +65,11 @@ export default function GarsonPage() {
           if (payload.eventType === "INSERT") {
             const newOrder = payload.new as Order;
 
-            if (newOrder.is_closed) {
+            if (
+              newOrder.is_closed ||
+              newOrder.status === "teslim edildi" ||
+              newOrder.status === "iptal edildi"
+            ) {
               return;
             }
 
@@ -83,7 +89,11 @@ export default function GarsonPage() {
           if (payload.eventType === "UPDATE") {
             const updatedOrder = payload.new as Order;
 
-            if (updatedOrder.is_closed) {
+            if (
+              updatedOrder.is_closed ||
+              updatedOrder.status === "teslim edildi" ||
+              updatedOrder.status === "iptal edildi"
+            ) {
               setOrders((currentOrders) =>
                 currentOrders.filter(
                   (order) => order.id !== updatedOrder.id
@@ -126,6 +136,35 @@ export default function GarsonPage() {
     orderId: number,
     newStatus: string
   ) => {
+    // TESLİM EDİLDİ → SİPARİŞİ TAMAMEN SİL
+    if (newStatus === "teslim edildi") {
+      const confirmed = window.confirm(
+        "Bu sipariş teslim edildi olarak işaretlenecek ve sistemden tamamen silinecek. Devam etmek istiyor musunuz?"
+      );
+
+      if (!confirmed) return;
+
+      const { error } = await supabase
+        .from("orders")
+        .delete()
+        .eq("id", orderId);
+
+      if (error) {
+        console.error("Sipariş silinemedi:", error);
+        alert("Sipariş silinemedi.");
+        return;
+      }
+
+      setOrders((currentOrders) =>
+        currentOrders.filter(
+          (order) => order.id !== orderId
+        )
+      );
+
+      return;
+    }
+
+    // DİĞER DURUMLAR → NORMAL GÜNCELLEME
     const { data, error } = await supabase
       .from("orders")
       .update({ status: newStatus })
@@ -246,9 +285,7 @@ export default function GarsonPage() {
     <main className="min-h-screen bg-gray-100 p-3 sm:p-6">
       <div className="mx-auto max-w-6xl">
 
-        {/* BAŞLIK */}
-        <header className="mb-4 rounded-2xl bg-red-700 p-5 text-white shadow sm:mb-6 sm:p-6">
-
+        <header className="mb-4 rounded-2xl bg-red-700 p-5 text-white shadow sm:mb-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 
             <div>
@@ -307,7 +344,6 @@ export default function GarsonPage() {
           </div>
         </header>
 
-        {/* 20 MASA PANELİ */}
         <section className="mb-5 rounded-2xl bg-white p-4 shadow">
 
           <h2 className="mb-3 text-lg font-bold text-gray-900">
@@ -391,7 +427,6 @@ export default function GarsonPage() {
 
         </section>
 
-        {/* SİPARİŞLER */}
         {orders.length === 0 ? (
 
           <div className="rounded-2xl bg-white p-8 text-center shadow">
@@ -442,7 +477,6 @@ export default function GarsonPage() {
                 className="overflow-hidden rounded-2xl bg-white shadow"
               >
 
-                {/* MASA BAŞLIĞI */}
                 <div className="border-b bg-gray-50 p-4 sm:p-5">
 
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -495,7 +529,6 @@ export default function GarsonPage() {
 
                 </div>
 
-                {/* MASANIN SİPARİŞLERİ */}
                 <div className="space-y-4 p-4 sm:p-5">
 
                   {tableOrders.map((order, orderIndex) => (
@@ -513,7 +546,6 @@ export default function GarsonPage() {
 
                         <div>
 
-                          {/* GÜNLÜK SİPARİŞ NUMARASI */}
                           <p className="font-bold text-gray-900">
                             Sipariş #
                             {order.daily_order_number ??
@@ -585,7 +617,6 @@ export default function GarsonPage() {
                                   </span>
 
                                 </div>
-
                               )
                             )}
 
@@ -599,7 +630,6 @@ export default function GarsonPage() {
 
                         )}
 
-                        {/* ÖZEL İSTEK */}
                         {order.special_request &&
                         String(order.special_request).trim() !== "" && (
 

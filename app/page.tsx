@@ -19,6 +19,7 @@ type MenuItem = {
   is_active?: boolean;
   created_at?: string;
 };
+
 type CartItem = MenuItem & {
   quantity: number;
 };
@@ -105,14 +106,14 @@ function MenuPage() {
       setMenuLoading(true);
 
       const { data, error } = await supabase
-  .from("menu_items")
-  .select(
-    "id,name,description,price,category,image,image_url,is_active,created_at"
-  )
-  .eq("is_active", true)
-  .order("id", {
-    ascending: true,
-  });
+        .from("menu_items")
+        .select(
+          "id,name,description,price,category,image,image_url,is_active,created_at"
+        )
+        .eq("is_active", true)
+        .order("id", {
+          ascending: true,
+        });
 
       if (error) {
         console.error("Menü ürünleri alınamadı:", error);
@@ -126,20 +127,22 @@ function MenuPage() {
       }
 
       if (data) {
-  setMenuItems(
-    data.map((item: any) => ({
-        id: Number(item.id),
-        name: item.name || "",
-        description: item.description || "",
-        price: Number(item.price || 0),
-        category: item.category || "",
-        image: item.image || null,
-        image_url: item.image_url || null,
-        is_active: true,
-        created_at: item.created_at,
-      }))
-  );
-}
+        const activeItems = data
+          .filter((item: any) => item.is_active === true)
+          .map((item: any) => ({
+            id: Number(item.id),
+            name: item.name || "",
+            description: item.description || "",
+            price: Number(item.price || 0),
+            category: item.category || "",
+            image: item.image || null,
+            image_url: item.image_url || null,
+            is_active: item.is_active === true,
+            created_at: item.created_at,
+          }));
+
+        setMenuItems(activeItems);
+      }
 
       setMenuLoading(false);
     };
@@ -147,7 +150,7 @@ function MenuPage() {
     fetchMenuItems();
   }, []);
 
-    /* =========================================================
+  /* =========================================================
      SİPARİŞLERİ GETİR
      ========================================================= */
 
@@ -161,6 +164,8 @@ function MenuPage() {
           "id,table_number,items,total,status,special_request,created_at"
         )
         .eq("table_number", masaNo)
+        .eq("is_closed", false)
+        .not("status", "in", '("teslim edildi","iptal edildi")')
         .order("created_at", {
           ascending: false,
         });
@@ -196,7 +201,8 @@ function MenuPage() {
 
             if (
               newOrder.status === "teslim edildi" ||
-              newOrder.status === "iptal edildi"
+              newOrder.status === "iptal edildi" ||
+              newOrder.is_closed === true
             ) {
               return;
             }
@@ -220,7 +226,8 @@ function MenuPage() {
             setOrders((currentOrders) => {
               if (
                 updatedOrder.status === "teslim edildi" ||
-                updatedOrder.status === "iptal edildi"
+                updatedOrder.status === "iptal edildi" ||
+                updatedOrder.is_closed === true
               ) {
                 return currentOrders.filter(
                   (order) => order.id !== updatedOrder.id
@@ -310,19 +317,25 @@ function MenuPage() {
      KATEGORİLERE DÖN
      ========================================================= */
 
- const goBackToCategories = () => {
-  setSelectedCategory(null);
-  window.scrollTo({
-    top: 0,
-    behavior: "smooth",
-  });
-};
+  const goBackToCategories = () => {
+    setSelectedCategory(null);
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  };
 
   /* =========================================================
      SEPETE EKLE
      ========================================================= */
 
   const addToCart = (item: MenuItem) => {
+    if (item.is_active !== true) {
+      alert("Bu ürün şu anda satışta değil.");
+      return;
+    }
+
     setCart((currentCart) => {
       const existingItem = currentCart.find(
         (cartItem) => cartItem.id === item.id
@@ -420,33 +433,36 @@ function MenuPage() {
       quantity: item.quantity,
     }));
 
-   const today = new Date().toISOString().split("T")[0];
+    const today = new Date()
+      .toISOString()
+      .split("T")[0];
 
-const { data: lastOrder } = await supabase
-  .from("orders")
-  .select("daily_order_number")
-  .eq("order_date", today)
-  .order("daily_order_number", { ascending: false })
-  .limit(1)
-  .maybeSingle();
+    const { data: lastOrder } = await supabase
+      .from("orders")
+      .select("daily_order_number")
+      .eq("order_date", today)
+      .order("daily_order_number", {
+        ascending: false,
+      })
+      .limit(1)
+      .maybeSingle();
 
-const nextDailyOrderNumber =
-  (lastOrder?.daily_order_number || 0) + 1;
+    const nextDailyOrderNumber =
+      (lastOrder?.daily_order_number || 0) + 1;
 
-const { data, error } = await supabase
-  .from("orders")
-  .insert({
-    table_number: masaNo,
-    items: orderItems,
-    total: total,
-    status: "yeni",
-    special_request:
-      specialRequest.trim() || null,
-
-    daily_order_number: nextDailyOrderNumber,
-    order_date: today,
-  })
-  
+    const { data, error } = await supabase
+      .from("orders")
+      .insert({
+        table_number: masaNo,
+        items: orderItems,
+        total: total,
+        status: "yeni",
+        special_request:
+          specialRequest.trim() || null,
+        daily_order_number:
+          nextDailyOrderNumber,
+        order_date: today,
+      })
       .select()
       .single();
 
@@ -534,6 +550,7 @@ const { data, error } = await supabase
             quantity: Number(
               item.quantity || 1
             ),
+            is_active: true,
           }))
         : [];
 
@@ -868,10 +885,13 @@ const { data, error } = await supabase
 
                   {order.special_request && (
                     <div className="mt-3 rounded-xl bg-yellow-50 p-3 text-sm text-yellow-800">
+
                       <span className="font-bold">
                         📝 Özel İstek:
                       </span>{" "}
+
                       {order.special_request}
+
                     </div>
                   )}
 
@@ -1002,10 +1022,6 @@ const { data, error } = await supabase
 
         ) : selectedCategory === null ? (
 
-          /* =================================================
-             KATEGORİLER
-             ================================================= */
-
           <div className="space-y-4">
 
             {categoryNames.map((category) => {
@@ -1062,10 +1078,6 @@ const { data, error } = await supabase
 
         ) : (
 
-          /* =================================================
-             KATEGORİ ÜRÜNLERİ
-             ================================================= */
-
           <div>
 
             {/* ÜSTTEKİ KATEGORİLERE DÖN BUTONU */}
@@ -1104,7 +1116,8 @@ const { data, error } = await supabase
                   menuItems.filter(
                     (item) =>
                       item.category ===
-                      category
+                      category &&
+                      item.is_active === true
                   );
 
                 if (
@@ -1246,8 +1259,6 @@ const { data, error } = await supabase
 
                     <div className="mt-7 space-y-3">
 
-                     
-
                       {/* ÖNCEKİ / SONRAKİ */}
 
                       <div className="flex gap-3">
@@ -1314,13 +1325,13 @@ const { data, error } = await supabase
           ===================================================== */}
 
       {selectedCategory !== null && (
-  <button
-    onClick={goBackToCategories}
-    className="fixed bottom-5 left-4 z-40 rounded-full border-2 border-[#e8c866] bg-[#e8c866] px-5 py-3 font-bold text-[#061b3d] shadow-2xl transition hover:bg-[#f1d477] active:scale-95"
-  >
-    ← Kategoriler
-  </button>
-)}
+        <button
+          onClick={goBackToCategories}
+          className="fixed bottom-5 left-4 z-40 rounded-full border-2 border-[#e8c866] bg-[#e8c866] px-5 py-3 font-bold text-[#061b3d] shadow-2xl transition hover:bg-[#f1d477] active:scale-95"
+        >
+          ← Kategoriler
+        </button>
+      )}
 
       {/* =====================================================
           SEPET
