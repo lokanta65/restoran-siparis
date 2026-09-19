@@ -136,45 +136,151 @@ export default function GarsonPage() {
     orderId: number,
     newStatus: string
   ) => {
-    // TESLİM EDİLDİ → SİPARİŞİ TAMAMEN SİL
+    /*
+      =========================================================
+      TESLİM EDİLDİ
+      =========================================================
+      Siparişin status alanını değiştirmiyoruz.
+      Doğrudan orders tablosundan tamamen siliyoruz.
+    */
+
     if (newStatus === "teslim edildi") {
       const confirmed = window.confirm(
         "Bu sipariş teslim edildi olarak işaretlenecek ve sistemden tamamen silinecek. Devam etmek istiyor musunuz?"
       );
 
-      if (!confirmed) return;
-
-      const { error } = await supabase
-        .from("orders")
-        .delete()
-        .eq("id", orderId);
-
-      if (error) {
-        console.error("Sipariş silinemedi:", error);
-        alert("Sipariş silinemedi.");
+      if (!confirmed) {
         return;
       }
 
+      console.log(
+        "SİPARİŞ SİLME BAŞLADI. ID:",
+        orderId
+      );
+
+      /*
+        DELETE + select:
+        Gerçekten bir kayıt silindiyse deletedData içinde
+        silinen kayıt dönecek.
+      */
+      const { data: deletedData, error } = await supabase
+        .from("orders")
+        .delete()
+        .eq("id", orderId)
+        .select("id");
+
+      console.log("DELETE SONUCU:", {
+        orderId,
+        deletedData,
+        error,
+      });
+
+      if (error) {
+        console.error(
+          "Sipariş silinemedi:",
+          error
+        );
+
+        alert(
+          `Sipariş silinemedi.\n\nSupabase hatası:\n${error.message}`
+        );
+
+        return;
+      }
+
+      /*
+        DELETE başarılı görünse bile gerçekten bir kayıt
+        silinmiş mi kontrol ediyoruz.
+      */
+      if (!deletedData || deletedData.length === 0) {
+        console.error(
+          "DELETE çalıştı ancak hiçbir kayıt silinmedi.",
+          {
+            orderId,
+            deletedData,
+          }
+        );
+
+        /*
+          İkinci kontrol:
+          Kayıt hâlâ veritabanında mı?
+        */
+        const { data: stillExists, error: checkError } =
+          await supabase
+            .from("orders")
+            .select("id,status,is_closed")
+            .eq("id", orderId)
+            .maybeSingle();
+
+        console.error(
+          "SİLME SONRASI KAYIT KONTROLÜ:",
+          {
+            stillExists,
+            checkError,
+          }
+        );
+
+        if (stillExists) {
+          alert(
+            `Sipariş #${orderId} Supabase'den silinemedi.\n\nKayıt hâlâ veritabanında bulunuyor.`
+          );
+        } else {
+          alert(
+            `Sipariş #${orderId} sistemden silindi.`
+          );
+        }
+
+        return;
+      }
+
+      /*
+        Supabase gerçekten sildiyse Garson ekranından da
+        hemen kaldır.
+      */
       setOrders((currentOrders) =>
         currentOrders.filter(
           (order) => order.id !== orderId
         )
       );
 
+      console.log(
+        "SİPARİŞ TAMAMEN SİLİNDİ. ID:",
+        orderId
+      );
+
+      alert(
+        `Sipariş #${orderId} teslim edildi ve sistemden tamamen silindi.`
+      );
+
       return;
     }
 
-    // DİĞER DURUMLAR → NORMAL GÜNCELLEME
+    /*
+      =========================================================
+      DİĞER DURUMLAR
+      =========================================================
+      Hazırlanıyor / Hazır normal UPDATE.
+    */
+
     const { data, error } = await supabase
       .from("orders")
-      .update({ status: newStatus })
+      .update({
+        status: newStatus,
+      })
       .eq("id", orderId)
       .select()
       .single();
 
     if (error) {
-      console.error("Durum güncellenemedi:", error);
-      alert("Sipariş durumu güncellenemedi.");
+      console.error(
+        "Durum güncellenemedi:",
+        error
+      );
+
+      alert(
+        `Sipariş durumu güncellenemedi.\n\n${error.message}`
+      );
+
       return;
     }
 
@@ -203,20 +309,30 @@ export default function GarsonPage() {
       .eq("is_closed", false);
 
     if (error) {
-      console.error("Hesap kapatılamadı:", error);
-      alert("Masa hesabı kapatılamadı.");
+      console.error(
+        "Hesap kapatılamadı:",
+        error
+      );
+
+      alert(
+        `Masa hesabı kapatılamadı.\n\n${error.message}`
+      );
+
       return;
     }
 
     setOrders((currentOrders) =>
       currentOrders.filter(
-        (order) => order.table_number !== tableNumber
+        (order) =>
+          order.table_number !== tableNumber
       )
     );
 
     setSelectedTable(null);
 
-    alert(`Masa ${tableNumber} hesabı kapatıldı.`);
+    alert(
+      `Masa ${tableNumber} hesabı kapatıldı.`
+    );
   };
 
   const statusText = (status: string) => {
@@ -317,7 +433,8 @@ export default function GarsonPage() {
               Yeni:{" "}
               {
                 orders.filter(
-                  (order) => order.status === "yeni"
+                  (order) =>
+                    order.status === "yeni"
                 ).length
               }
             </div>
@@ -327,7 +444,8 @@ export default function GarsonPage() {
               {
                 orders.filter(
                   (order) =>
-                    order.status === "hazırlanıyor"
+                    order.status ===
+                    "hazırlanıyor"
                 ).length
               }
             </div>
@@ -336,7 +454,8 @@ export default function GarsonPage() {
               Hazır:{" "}
               {
                 orders.filter(
-                  (order) => order.status === "hazır"
+                  (order) =>
+                    order.status === "hazır"
                 ).length
               }
             </div>
@@ -352,73 +471,88 @@ export default function GarsonPage() {
 
           <div className="grid grid-cols-4 gap-2 sm:grid-cols-5 md:grid-cols-10">
 
-            {Array.from({ length: 20 }, (_, index) => {
+            {Array.from(
+              { length: 20 },
+              (_, index) => {
 
-              const masaNo = index + 1;
+                const masaNo = index + 1;
 
-              const masaOrders = orders.filter(
-                (order) =>
-                  order.table_number === masaNo &&
-                  !order.is_closed
-              );
+                const masaOrders =
+                  orders.filter(
+                    (order) =>
+                      order.table_number ===
+                        masaNo &&
+                      !order.is_closed
+                  );
 
-              const aktifSiparis = masaOrders.find(
-                (order) =>
-                  order.status !== "teslim edildi" &&
-                  order.status !== "iptal edildi"
-              );
+                const aktifSiparis =
+                  masaOrders.find(
+                    (order) =>
+                      order.status !==
+                        "teslim edildi" &&
+                      order.status !==
+                        "iptal edildi"
+                  );
 
-              let masaStyle =
-                "bg-gray-100 text-gray-700 border-gray-200";
+                let masaStyle =
+                  "bg-gray-100 text-gray-700 border-gray-200";
 
-              let durum = "Boş";
+                let durum = "Boş";
 
-              if (aktifSiparis) {
-                switch (aktifSiparis.status) {
-                  case "yeni":
-                    masaStyle =
-                      "bg-red-100 text-red-700 border-red-300";
-                    durum = "Yeni";
-                    break;
+                if (aktifSiparis) {
+                  switch (
+                    aktifSiparis.status
+                  ) {
+                    case "yeni":
+                      masaStyle =
+                        "bg-red-100 text-red-700 border-red-300";
+                      durum = "Yeni";
+                      break;
 
-                  case "hazırlanıyor":
-                    masaStyle =
-                      "bg-yellow-100 text-yellow-700 border-yellow-300";
-                    durum = "Hazırlanıyor";
-                    break;
+                    case "hazırlanıyor":
+                      masaStyle =
+                        "bg-yellow-100 text-yellow-700 border-yellow-300";
+                      durum =
+                        "Hazırlanıyor";
+                      break;
 
-                  case "hazır":
-                    masaStyle =
-                      "bg-blue-100 text-blue-700 border-blue-300";
-                    durum = "Hazır";
-                    break;
-                }
-              }
-
-              return (
-                <button
-                  key={masaNo}
-                  onClick={() =>
-                    setSelectedTable(masaNo)
+                    case "hazır":
+                      masaStyle =
+                        "bg-blue-100 text-blue-700 border-blue-300";
+                      durum = "Hazır";
+                      break;
                   }
-                  className={`w-full rounded-xl border-2 p-3 text-center transition active:scale-95 ${masaStyle}`}
-                >
-                  <div className="text-lg font-bold">
-                    Masa {masaNo}
-                  </div>
+                }
 
-                  <div className="mt-1 text-xs font-semibold">
-                    {durum}
-                  </div>
-                </button>
-              );
-            })}
+                return (
+                  <button
+                    key={masaNo}
+                    onClick={() =>
+                      setSelectedTable(
+                        masaNo
+                      )
+                    }
+                    className={`w-full rounded-xl border-2 p-3 text-center transition active:scale-95 ${masaStyle}`}
+                  >
+                    <div className="text-lg font-bold">
+                      Masa {masaNo}
+                    </div>
+
+                    <div className="mt-1 text-xs font-semibold">
+                      {durum}
+                    </div>
+                  </button>
+                );
+              }
+            )}
 
           </div>
 
           {selectedTable !== null && (
             <button
-              onClick={() => setSelectedTable(null)}
+              onClick={() =>
+                setSelectedTable(null)
+              }
               className="mt-4 w-full rounded-xl bg-gray-800 px-4 py-3 font-bold text-white"
             >
               ← Tüm Siparişleri Göster
@@ -454,271 +588,330 @@ export default function GarsonPage() {
                 .filter(
                   (order) =>
                     selectedTable === null ||
-                    order.table_number === selectedTable
+                    order.table_number ===
+                      selectedTable
                 )
-                .reduce<Record<number, Order[]>>(
+                .reduce<
+                  Record<number, Order[]>
+                >(
                   (groups, order) => {
 
-                    if (!groups[order.table_number]) {
-                      groups[order.table_number] = [];
+                    if (
+                      !groups[
+                        order.table_number
+                      ]
+                    ) {
+                      groups[
+                        order.table_number
+                      ] = [];
                     }
 
-                    groups[order.table_number].push(order);
+                    groups[
+                      order.table_number
+                    ].push(order);
 
                     return groups;
-
                   },
                   {}
                 )
-            ).map(([tableNumber, tableOrders]) => (
+            ).map(
+              ([
+                tableNumber,
+                tableOrders,
+              ]) => (
 
-              <div
-                key={tableNumber}
-                className="overflow-hidden rounded-2xl bg-white shadow"
-              >
+                <div
+                  key={tableNumber}
+                  className="overflow-hidden rounded-2xl bg-white shadow"
+                >
 
-                <div className="border-b bg-gray-50 p-4 sm:p-5">
+                  <div className="border-b bg-gray-50 p-4 sm:p-5">
 
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
 
-                    <div>
+                      <div>
 
-                      <h2 className="text-2xl font-bold text-gray-900">
-                        🪑 Masa {tableNumber}
-                      </h2>
+                        <h2 className="text-2xl font-bold text-gray-900">
+                          🪑 Masa{" "}
+                          {tableNumber}
+                        </h2>
 
-                      <p className="mt-1 text-sm text-gray-500">
-                        {tableOrders.length} Sipariş
-                      </p>
+                        <p className="mt-1 text-sm text-gray-500">
+                          {
+                            tableOrders.length
+                          }{" "}
+                          Sipariş
+                        </p>
 
-                    </div>
+                      </div>
 
-                    <div className="rounded-2xl bg-green-50 px-5 py-3 text-right">
+                      <div className="rounded-2xl bg-green-50 px-5 py-3 text-right">
 
-                      <p className="text-sm font-semibold text-green-700">
-                        💰 Masa Hesabı
-                      </p>
+                        <p className="text-sm font-semibold text-green-700">
+                          💰 Masa Hesabı
+                        </p>
 
-                      <p className="mt-1 text-2xl font-bold text-green-800">
-                        {tableOrders
-                          .filter(
-                            (order) => !order.is_closed
-                          )
-                          .reduce(
-                            (sum, order) =>
-                              sum +
-                              Number(order.total || 0),
-                            0
-                          )
-                          .toLocaleString("tr-TR")}{" "}
-                        TL
-                      </p>
+                        <p className="mt-1 text-2xl font-bold text-green-800">
+                          {tableOrders
+                            .filter(
+                              (order) =>
+                                !order.is_closed
+                            )
+                            .reduce(
+                              (
+                                sum,
+                                order
+                              ) =>
+                                sum +
+                                Number(
+                                  order.total ||
+                                    0
+                                ),
+                              0
+                            )
+                            .toLocaleString(
+                              "tr-TR"
+                            )}{" "}
+                          TL
+                        </p>
 
-                      <button
-                        onClick={() =>
-                          closeTable(Number(tableNumber))
-                        }
-                        className="mt-3 w-full rounded-xl bg-green-600 px-4 py-3 font-bold text-white transition hover:bg-green-700 active:scale-95"
-                      >
-                        💰 Hesabı Kapat
-                      </button>
+                        <button
+                          onClick={() =>
+                            closeTable(
+                              Number(
+                                tableNumber
+                              )
+                            )
+                          }
+                          className="mt-3 w-full rounded-xl bg-green-600 px-4 py-3 font-bold text-white transition hover:bg-green-700 active:scale-95"
+                        >
+                          💰 Hesabı Kapat
+                        </button>
+
+                      </div>
 
                     </div>
 
                   </div>
 
-                </div>
+                  <div className="space-y-4 p-4 sm:p-5">
 
-                <div className="space-y-4 p-4 sm:p-5">
-
-                  {tableOrders.map((order, orderIndex) => (
-
-                    <div
-                      key={order.id}
-                      className={`rounded-2xl border p-4 shadow-sm ${
-                        order.status === "iptal edildi"
-                          ? "border-red-300 bg-red-50"
-                          : "border-gray-200 bg-white"
-                      }`}
-                    >
-
-                      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-
-                        <div>
-
-                          <p className="font-bold text-gray-900">
-                            Sipariş #
-                            {order.daily_order_number ??
-                              (tableOrders.length - orderIndex)}
-                          </p>
-
-                          <p className="mt-1 text-sm text-gray-500">
-                            {new Date(
-                              order.created_at
-                            ).toLocaleString("tr-TR")}
-                          </p>
-
-                        </div>
+                    {tableOrders.map(
+                      (
+                        order,
+                        orderIndex
+                      ) => (
 
                         <div
-                          className={`w-fit rounded-full px-4 py-2 text-sm font-bold ${statusStyle(
-                            order.status
-                          )}`}
+                          key={order.id}
+                          className={`rounded-2xl border p-4 shadow-sm ${
+                            order.status ===
+                            "iptal edildi"
+                              ? "border-red-300 bg-red-50"
+                              : "border-gray-200 bg-white"
+                          }`}
                         >
-                          {statusText(order.status)}
-                        </div>
 
-                      </div>
+                          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 
-                      <div className="rounded-xl bg-gray-50 p-4">
+                            <div>
 
-                        <h3 className="mb-3 font-bold text-gray-800">
-                          Sipariş Detayı
-                        </h3>
+                              <p className="font-bold text-gray-900">
+                                Sipariş #
+                                {order.daily_order_number ??
+                                  tableOrders.length -
+                                    orderIndex}
+                              </p>
 
-                        {Array.isArray(order.items) &&
-                        order.items.length > 0 ? (
-
-                          <div className="space-y-3">
-
-                            {order.items.map(
-                              (
-                                item: OrderItem,
-                                index: number
-                              ) => (
-
-                                <div
-                                  key={`${item.name}-${index}`}
-                                  className="flex items-center justify-between gap-4 border-b pb-3 last:border-b-0 last:pb-0"
-                                >
-
-                                  <div className="min-w-0">
-
-                                    <p className="font-semibold text-gray-900">
-                                      {item.name}
-                                    </p>
-
-                                    <p className="mt-1 text-sm text-gray-500">
-                                      {Number(
-                                        item.quantity || 1
-                                      )}{" "}
-                                      adet ×{" "}
-                                      {item.price} TL
-                                    </p>
-
-                                  </div>
-
-                                  <span className="shrink-0 font-bold text-gray-900">
-                                    {Number(item.price) *
-                                      Number(
-                                        item.quantity || 1
-                                      )}{" "}
-                                    TL
-                                  </span>
-
-                                </div>
-                              )
-                            )}
-
-                          </div>
-
-                        ) : (
-
-                          <p className="text-gray-500">
-                            Ürün bilgisi bulunamadı.
-                          </p>
-
-                        )}
-
-                        {order.special_request &&
-                        String(order.special_request).trim() !== "" && (
-
-                          <div className="mt-4 rounded-xl border-2 border-orange-300 bg-orange-50 p-4">
-
-                            <p className="font-bold text-orange-700">
-                              📝 Özel İstek
-                            </p>
-
-                            <div className="mt-2 rounded-lg bg-white p-3">
-
-                              <p className="text-base font-bold text-orange-900">
-                                {String(
-                                  order.special_request
+                              <p className="mt-1 text-sm text-gray-500">
+                                {new Date(
+                                  order.created_at
+                                ).toLocaleString(
+                                  "tr-TR"
                                 )}
                               </p>
 
                             </div>
 
+                            <div
+                              className={`w-fit rounded-full px-4 py-2 text-sm font-bold ${statusStyle(
+                                order.status
+                              )}`}
+                            >
+                              {statusText(
+                                order.status
+                              )}
+                            </div>
+
                           </div>
-                        )}
 
-                        <div className="mt-4 flex items-center justify-between border-t pt-4">
+                          <div className="rounded-xl bg-gray-50 p-4">
 
-                          <span className="text-lg font-bold">
-                            Sipariş Toplamı
-                          </span>
+                            <h3 className="mb-3 font-bold text-gray-800">
+                              Sipariş Detayı
+                            </h3>
 
-                          <span className="text-xl font-bold text-red-700">
-                            {order.total} TL
-                          </span>
+                            {Array.isArray(
+                              order.items
+                            ) &&
+                            order.items.length >
+                              0 ? (
+
+                              <div className="space-y-3">
+
+                                {order.items.map(
+                                  (
+                                    item: OrderItem,
+                                    index: number
+                                  ) => (
+
+                                    <div
+                                      key={`${item.name}-${index}`}
+                                      className="flex items-center justify-between gap-4 border-b pb-3 last:border-b-0 last:pb-0"
+                                    >
+
+                                      <div className="min-w-0">
+
+                                        <p className="font-semibold text-gray-900">
+                                          {
+                                            item.name
+                                          }
+                                        </p>
+
+                                        <p className="mt-1 text-sm text-gray-500">
+                                          {Number(
+                                            item.quantity ||
+                                              1
+                                          )}{" "}
+                                          adet ×{" "}
+                                          {
+                                            item.price
+                                          }{" "}
+                                          TL
+                                        </p>
+
+                                      </div>
+
+                                      <span className="shrink-0 font-bold text-gray-900">
+                                        {Number(
+                                          item.price
+                                        ) *
+                                          Number(
+                                            item.quantity ||
+                                              1
+                                          )}{" "}
+                                        TL
+                                      </span>
+
+                                    </div>
+
+                                  )
+                                )}
+
+                              </div>
+
+                            ) : (
+
+                              <p className="text-gray-500">
+                                Ürün bilgisi bulunamadı.
+                              </p>
+
+                            )}
+
+                            {order.special_request &&
+                              String(
+                                order.special_request
+                              ).trim() !== "" && (
+
+                                <div className="mt-4 rounded-xl border-2 border-orange-300 bg-orange-50 p-4">
+
+                                  <p className="font-bold text-orange-700">
+                                    📝 Özel İstek
+                                  </p>
+
+                                  <div className="mt-2 rounded-lg bg-white p-3">
+
+                                    <p className="text-base font-bold text-orange-900">
+                                      {String(
+                                        order.special_request
+                                      )}
+                                    </p>
+
+                                  </div>
+
+                                </div>
+                              )}
+
+                            <div className="mt-4 flex items-center justify-between border-t pt-4">
+
+                              <span className="text-lg font-bold">
+                                Sipariş Toplamı
+                              </span>
+
+                              <span className="text-xl font-bold text-red-700">
+                                {order.total} TL
+                              </span>
+
+                            </div>
+
+                          </div>
+
+                          {order.status !==
+                            "iptal edildi" && (
+
+                            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+
+                              <button
+                                onClick={() =>
+                                  updateStatus(
+                                    order.id,
+                                    "hazırlanıyor"
+                                  )
+                                }
+                                className="min-h-12 rounded-xl bg-yellow-500 px-4 py-3 font-bold text-white transition hover:bg-yellow-600 active:scale-95"
+                              >
+                                Hazırlanıyor
+                              </button>
+
+                              <button
+                                onClick={() =>
+                                  updateStatus(
+                                    order.id,
+                                    "hazır"
+                                  )
+                                }
+                                className="min-h-12 rounded-xl bg-blue-600 px-4 py-3 font-bold text-white transition hover:bg-blue-700 active:scale-95"
+                              >
+                                Hazır
+                              </button>
+
+                              <button
+                                onClick={() =>
+                                  updateStatus(
+                                    order.id,
+                                    "teslim edildi"
+                                  )
+                                }
+                                className="min-h-12 rounded-xl bg-green-600 px-4 py-3 font-bold text-white transition hover:bg-green-700 active:scale-95"
+                              >
+                                Teslim Edildi
+                              </button>
+
+                            </div>
+
+                          )}
 
                         </div>
 
-                      </div>
+                      )
+                    )}
 
-                      {order.status !== "iptal edildi" && (
-
-                        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-
-                          <button
-                            onClick={() =>
-                              updateStatus(
-                                order.id,
-                                "hazırlanıyor"
-                              )
-                            }
-                            className="min-h-12 rounded-xl bg-yellow-500 px-4 py-3 font-bold text-white transition hover:bg-yellow-600 active:scale-95"
-                          >
-                            Hazırlanıyor
-                          </button>
-
-                          <button
-                            onClick={() =>
-                              updateStatus(
-                                order.id,
-                                "hazır"
-                              )
-                            }
-                            className="min-h-12 rounded-xl bg-blue-600 px-4 py-3 font-bold text-white transition hover:bg-blue-700 active:scale-95"
-                          >
-                            Hazır
-                          </button>
-
-                          <button
-                            onClick={() =>
-                              updateStatus(
-                                order.id,
-                                "teslim edildi"
-                              )
-                            }
-                            className="min-h-12 rounded-xl bg-green-600 px-4 py-3 font-bold text-white transition hover:bg-green-700 active:scale-95"
-                          >
-                            Teslim Edildi
-                          </button>
-
-                        </div>
-
-                      )}
-
-                    </div>
-
-                  ))}
+                  </div>
 
                 </div>
 
-              </div>
-
-            ))}
+              )
+            )}
 
           </div>
 
