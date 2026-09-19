@@ -32,6 +32,7 @@ type Order = {
   status: string;
   special_request?: string | null;
   created_at: string;
+    is_closed?: boolean;
 };
 
 /* =========================================================
