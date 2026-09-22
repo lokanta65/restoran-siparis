@@ -432,7 +432,7 @@ export default function GarsonPage() {
           <div className="grid grid-cols-4 gap-2 sm:grid-cols-5 md:grid-cols-10">
 
             {Array.from(
-              { length: 20 },
+              { length: 40 },
               (_, index) => {
 
                 const masaNo = index + 1;

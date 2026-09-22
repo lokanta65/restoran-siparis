@@ -3,7 +3,7 @@
 import { QRCodeCanvas } from "qrcode.react";
 
 export default function QRPage() {
-  const masaSayisi = 20;
+  const masaSayisi = 40;
 
   const siteUrl = "https://restoran-siparis-opal.vercel.app";
 
