@@ -1,6 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+} from "react";
 import { supabase } from "../../supabase";
 
 type MenuItem = {
@@ -14,7 +19,13 @@ type MenuItem = {
   created_at?: string;
 };
 
-const categories = [
+type Category = {
+  id: number;
+  name: string;
+  image: string;
+};
+
+const fallbackCategories = [
   "Kahvaltı",
   "Omlet ve Yumurta Çeşitleri",
   "Ara Sıcaklar",
@@ -25,6 +36,26 @@ const categories = [
 ];
 
 export default function YonetimPage() {
+  /* =========================================================
+     ÇIKIŞ
+     ========================================================= */
+
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/logout", {
+        method: "POST",
+      });
+    } catch (error) {
+      console.error("Çıkış hatası:", error);
+    }
+
+    window.location.href = "/giris";
+  };
+
+  /* =========================================================
+     GENEL STATE
+     ========================================================= */
+
   const [items, setItems] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -42,31 +73,738 @@ export default function YonetimPage() {
   const [selectedCategory, setSelectedCategory] =
     useState("Tümü");
 
-  /*
-   * Yeni ürün için seçilen fotoğrafları
-   * henüz Supabase'e yüklemeden burada tutuyoruz.
-   */
+  /* =========================================================
+     KATEGORİ STATE
+     ========================================================= */
+
+  const [categoryList, setCategoryList] =
+    useState<Category[]>([]);
+
+  const [categoryLoading, setCategoryLoading] =
+    useState(true);
+
+  const [newCategoryName, setNewCategoryName] =
+    useState("");
+
+  const [newCategoryImage, setNewCategoryImage] =
+    useState<File | null>(null);
+
+  const [editingCategoryId, setEditingCategoryId] =
+    useState<number | null>(null);
+
+  const [editingCategoryName, setEditingCategoryName] =
+    useState("");
+
+  const [editingCategoryImage, setEditingCategoryImage] =
+    useState<File | null>(null);
+
+  const [savingCategory, setSavingCategory] =
+    useState(false);
+
+  const [deletingCategoryId, setDeletingCategoryId] =
+    useState<number | null>(null);
+
+  /* =========================================================
+     AYARLAR / ŞİFRE STATE
+     ========================================================= */
+
+  const [showSettings, setShowSettings] =
+    useState(false);
+
+  const [passwordTarget, setPasswordTarget] =
+    useState("garson");
+
+  const [adminPassword, setAdminPassword] =
+    useState("");
+
+  const [newPassword, setNewPassword] =
+    useState("");
+
+  const [newPasswordAgain, setNewPasswordAgain] =
+    useState("");
+
+  const [changingPassword, setChangingPassword] =
+    useState(false);
+
+  /* =========================================================
+     ŞİFRE DEĞİŞTİR
+     ========================================================= */
+
+  const changePassword = async () => {
+    if (
+      !adminPassword ||
+      !newPassword ||
+      !newPasswordAgain
+    ) {
+      alert("Lütfen tüm alanları doldurun.");
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      alert(
+        "Yeni şifre en az 6 karakter olmalıdır."
+      );
+      return;
+    }
+
+    if (newPassword !== newPasswordAgain) {
+      alert("Yeni şifreler aynı değil.");
+      return;
+    }
+
+    setChangingPassword(true);
+
+    try {
+      const { data, error } =
+        await supabase.rpc(
+          "admin_change_app_password",
+          {
+            p_admin_username: "admin",
+            p_admin_password: adminPassword,
+            p_target_username: passwordTarget,
+            p_new_password: newPassword,
+          }
+        );
+
+      if (error) {
+        console.error(
+          "Şifre değiştirme hatası:",
+          error
+        );
+
+        alert(
+          `Şifre değiştirilemedi.\n\n${error.message}`
+        );
+
+        return;
+      }
+
+      if (!data) {
+        alert(
+          "Mevcut admin şifresi hatalı veya işlem başarısız."
+        );
+
+        return;
+      }
+
+      alert(
+        passwordTarget === "admin"
+          ? "Yönetici şifresi başarıyla değiştirildi."
+          : passwordTarget === "mutfak"
+            ? "Mutfak şifresi başarıyla değiştirildi."
+            : "Garson şifresi başarıyla değiştirildi."
+      );
+
+      setAdminPassword("");
+      setNewPassword("");
+      setNewPasswordAgain("");
+
+      setShowSettings(false);
+    } finally {
+      setChangingPassword(false);
+    }
+  };
+
+  /* =========================================================
+     YENİ ÜRÜN İÇİN DOSYA
+     ========================================================= */
+
   const pendingFiles = useRef<{
     [key: number]: File | undefined;
   }>({});
 
-  /*
-   * Fotoğraf önizlemeleri
-   */
+  /* =========================================================
+     FOTOĞRAF ÖNİZLEMELERİ
+     ========================================================= */
+
   const previewUrls = useRef<{
     [key: number]: string | undefined;
   }>({});
 
-  /*
-   * Dosya inputları
-   */
+  /* =========================================================
+     DOSYA INPUTLARI
+     ========================================================= */
+
   const fileInputRefs = useRef<{
     [key: number]: HTMLInputElement | null;
   }>({});
 
+  /* =========================================================
+     MENÜ VE KATEGORİLERİ YÜKLE
+     ========================================================= */
+
   useEffect(() => {
     fetchMenu();
+    fetchCategories();
   }, []);
+
+  /* =========================================================
+     KATEGORİLERİ GETİR
+     ========================================================= */
+
+  const fetchCategories = async () => {
+    setCategoryLoading(true);
+
+    const { data, error } = await supabase
+      .from("menu_categories")
+      .select("id,name,image")
+      .order("id", {
+        ascending: true,
+      });
+
+    if (error) {
+      console.error(
+        "Kategoriler alınamadı:",
+        error
+      );
+
+      alert(
+        `Kategoriler alınamadı.\n\nKod: ${error.code}\nMesaj: ${error.message}`
+      );
+
+      setCategoryLoading(false);
+      return;
+    }
+
+    setCategoryList(
+      (data || []).map((category: any) => ({
+        id: Number(category.id),
+        name: category.name || "",
+        image: category.image || "",
+      }))
+    );
+
+    setCategoryLoading(false);
+  };
+
+  /* =========================================================
+     KULLANILACAK KATEGORİ LİSTESİ
+     ========================================================= */
+
+  const availableCategories =
+    categoryList.length > 0
+      ? categoryList.map(
+          (category) => category.name
+        )
+      : fallbackCategories;
+
+  /* =========================================================
+     KATEGORİ FOTOĞRAFI KONTROLÜ
+     ========================================================= */
+
+  const validateCategoryImage = (
+    file: File
+  ) => {
+    if (!file.type.startsWith("image/")) {
+      alert(
+        "Lütfen bir fotoğraf dosyası seçin."
+      );
+      return false;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      alert(
+        "Fotoğraf en fazla 10 MB olabilir."
+      );
+      return false;
+    }
+
+    return true;
+  };
+
+  /* =========================================================
+     YENİ KATEGORİ FOTOĞRAFI SEÇ
+     ========================================================= */
+
+  const handleNewCategoryImage = (
+    event: ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    if (!validateCategoryImage(file)) {
+      event.target.value = "";
+      return;
+    }
+
+    setNewCategoryImage(file);
+    event.target.value = "";
+  };
+
+  /* =========================================================
+     KATEGORİ DÜZENLEME FOTOĞRAFI SEÇ
+     ========================================================= */
+
+  const handleEditingCategoryImage = (
+    event: ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    if (!validateCategoryImage(file)) {
+      event.target.value = "";
+      return;
+    }
+
+    setEditingCategoryImage(file);
+    event.target.value = "";
+  };
+
+  /* =========================================================
+     KATEGORİ FOTOĞRAFI YÜKLE
+     ========================================================= */
+
+  const uploadCategoryImage = async (
+    file: File,
+    categoryId?: number
+  ) => {
+    const extension =
+      file.name
+        .split(".")
+        .pop()
+        ?.toLowerCase() || "jpg";
+
+    const prefix =
+      categoryId !== undefined
+        ? `category-${categoryId}`
+        : "category";
+
+    const fileName =
+      `${prefix}-${Date.now()}-${Math.random()
+        .toString(36)
+        .substring(2, 8)}.${extension}`;
+
+    const { error } =
+      await supabase.storage
+        .from("menu-images")
+        .upload(
+          fileName,
+          file,
+          {
+            cacheControl: "3600",
+            upsert: false,
+          }
+        );
+
+    if (error) {
+      throw error;
+    }
+
+    const { data } =
+      supabase.storage
+        .from("menu-images")
+        .getPublicUrl(fileName);
+
+    return data.publicUrl;
+  };
+
+  /* =========================================================
+     YENİ KATEGORİ EKLE
+     ========================================================= */
+
+  const addCategory = async () => {
+    const name =
+      newCategoryName.trim();
+
+    if (!name) {
+      alert("Lütfen kategori adı girin.");
+      return;
+    }
+
+    const duplicate =
+      categoryList.some(
+        (category) =>
+          category.name.toLocaleLowerCase(
+            "tr-TR"
+          ) ===
+          name.toLocaleLowerCase(
+            "tr-TR"
+          )
+      );
+
+    if (duplicate) {
+      alert(
+        "Bu kategori zaten mevcut."
+      );
+      return;
+    }
+
+    setSavingCategory(true);
+
+    try {
+      let imageUrl = "";
+
+      if (newCategoryImage) {
+        imageUrl =
+          await uploadCategoryImage(
+            newCategoryImage
+          );
+      }
+
+      const { error } =
+        await supabase
+          .from("menu_categories")
+          .insert({
+            name,
+            image: imageUrl,
+          });
+
+      if (error) {
+        console.error(
+          "Kategori eklenemedi:",
+          error
+        );
+
+        alert(
+          `Kategori eklenemedi.\n\nKod: ${error.code}\nMesaj: ${error.message}`
+        );
+
+        return;
+      }
+
+      setNewCategoryName("");
+      setNewCategoryImage(null);
+
+      await fetchCategories();
+
+      alert(
+        `"${name}" kategorisi başarıyla eklendi.`
+      );
+    } catch (error: any) {
+      console.error(
+        "Kategori ekleme hatası:",
+        error
+      );
+
+      alert(
+        `Kategori eklenemedi.\n\n${
+          error?.message ||
+          "Bilinmeyen hata"
+        }`
+      );
+    } finally {
+      setSavingCategory(false);
+    }
+  };
+
+  /* =========================================================
+     KATEGORİ DÜZENLEME BAŞLAT
+     ========================================================= */
+
+  const startEditCategory = (
+    category: Category
+  ) => {
+    setEditingCategoryId(
+      category.id
+    );
+
+    setEditingCategoryName(
+      category.name
+    );
+
+    setEditingCategoryImage(null);
+  };
+
+  /* =========================================================
+     KATEGORİ DÜZENLEME İPTAL
+     ========================================================= */
+
+  const cancelEditCategory = () => {
+    setEditingCategoryId(null);
+    setEditingCategoryName("");
+    setEditingCategoryImage(null);
+  };
+
+  /* =========================================================
+     KATEGORİ KAYDET
+     ========================================================= */
+
+  const saveCategory = async () => {
+    if (editingCategoryId === null) {
+      return;
+    }
+
+    const name =
+      editingCategoryName.trim();
+
+    if (!name) {
+      alert(
+        "Kategori adı boş olamaz."
+      );
+      return;
+    }
+
+    const currentCategory =
+      categoryList.find(
+        (category) =>
+          category.id ===
+          editingCategoryId
+      );
+
+    if (!currentCategory) {
+      return;
+    }
+
+    const oldName =
+      currentCategory.name;
+
+    const duplicate =
+      categoryList.some(
+        (category) =>
+          category.id !==
+            editingCategoryId &&
+          category.name.toLocaleLowerCase(
+            "tr-TR"
+          ) ===
+            name.toLocaleLowerCase(
+              "tr-TR"
+            )
+      );
+
+    if (duplicate) {
+      alert(
+        "Bu kategori adı zaten kullanılıyor."
+      );
+      return;
+    }
+
+    setSavingCategory(true);
+
+    let productsRenamed = false;
+
+    try {
+      let imageUrl =
+        currentCategory.image || "";
+
+      /* -----------------------------------------------------
+         YENİ GÖRSEL VARSA YÜKLE
+         ----------------------------------------------------- */
+
+      if (editingCategoryImage) {
+        imageUrl =
+          await uploadCategoryImage(
+            editingCategoryImage,
+            editingCategoryId
+          );
+      }
+
+      /* -----------------------------------------------------
+         KATEGORİ ADI DEĞİŞTİYSE ÜRÜNLERİ DE AKTAR
+         ----------------------------------------------------- */
+
+      if (oldName !== name) {
+        const { error: productsError } =
+          await supabase
+            .from("menu_items")
+            .update({
+              category: name,
+            })
+            .eq(
+              "category",
+              oldName
+            );
+
+        if (productsError) {
+          console.error(
+            "Kategoriye bağlı ürünler güncellenemedi:",
+            productsError
+          );
+
+          alert(
+            `Kategori adı değiştirilemedi.\n\nÜrünler yeni kategoriye aktarılamadı.\n\n${productsError.message}`
+          );
+
+          return;
+        }
+
+        productsRenamed = true;
+      }
+
+      /* -----------------------------------------------------
+         KATEGORİYİ GÜNCELLE
+         ----------------------------------------------------- */
+
+      const { error } =
+        await supabase
+          .from("menu_categories")
+          .update({
+            name,
+            image: imageUrl,
+          })
+          .eq(
+            "id",
+            editingCategoryId
+          );
+
+      if (error) {
+        console.error(
+          "Kategori güncellenemedi:",
+          error
+        );
+
+        /* ---------------------------------------------------
+           KATEGORİ GÜNCELLENEMEDİYSE
+           ÜRÜNLERİ ESKİ KATEGORİYE GERİ AL
+           --------------------------------------------------- */
+
+        if (productsRenamed) {
+          await supabase
+            .from("menu_items")
+            .update({
+              category: oldName,
+            })
+            .eq(
+              "category",
+              name
+            );
+        }
+
+        alert(
+          `Kategori güncellenemedi.\n\nKod: ${error.code}\nMesaj: ${error.message}`
+        );
+
+        return;
+      }
+
+      /* -----------------------------------------------------
+         SEÇİLİ FİLTREYİ YENİ İSME ÇEVİR
+         ----------------------------------------------------- */
+
+      if (
+        selectedCategory === oldName
+      ) {
+        setSelectedCategory(name);
+      }
+
+      setEditingCategoryId(null);
+      setEditingCategoryName("");
+      setEditingCategoryImage(null);
+
+      await Promise.all([
+        fetchCategories(),
+        fetchMenu(),
+      ]);
+
+      alert(
+        `"${name}" kategorisi başarıyla güncellendi.`
+      );
+    } catch (error: any) {
+      console.error(
+        "Kategori güncelleme hatası:",
+        error
+      );
+
+      alert(
+        `Kategori güncellenemedi.\n\n${
+          error?.message ||
+          "Bilinmeyen hata"
+        }`
+      );
+    } finally {
+      setSavingCategory(false);
+    }
+  };
+
+  /* =========================================================
+     KATEGORİ SİL
+     ========================================================= */
+
+  const deleteCategory = async (
+    category: Category
+  ) => {
+    const { count, error: countError } =
+      await supabase
+        .from("menu_items")
+        .select("id", {
+          count: "exact",
+          head: true,
+        })
+        .eq(
+          "category",
+          category.name
+        );
+
+    if (countError) {
+      alert(
+        `Kategori kontrol edilemedi.\n\n${countError.message}`
+      );
+      return;
+    }
+
+    if ((count || 0) > 0) {
+      alert(
+        `"${category.name}" kategorisi silinemiyor.\n\nBu kategoriye bağlı ${count} ürün bulunuyor.\n\nÖnce bu ürünleri başka bir kategoriye taşımanız gerekiyor.`
+      );
+      return;
+    }
+
+    const confirmed =
+      window.confirm(
+        `"${category.name}" kategorisini silmek istediğinizden emin misiniz?\n\nBu işlem geri alınamaz.`
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setDeletingCategoryId(
+      category.id
+    );
+
+    try {
+      const { error } =
+        await supabase
+          .from("menu_categories")
+          .delete()
+          .eq(
+            "id",
+            category.id
+          );
+
+      if (error) {
+        console.error(
+          "Kategori silinemedi:",
+          error
+        );
+
+        alert(
+          `Kategori silinemedi.\n\nKod: ${error.code}\nMesaj: ${error.message}`
+        );
+
+        return;
+      }
+
+      if (
+        selectedCategory ===
+        category.name
+      ) {
+        setSelectedCategory(
+          "Tümü"
+        );
+      }
+
+      if (
+        editingCategoryId ===
+        category.id
+      ) {
+        cancelEditCategory();
+      }
+
+      await fetchCategories();
+
+      alert(
+        `"${category.name}" kategorisi silindi.`
+      );
+    } finally {
+      setDeletingCategoryId(null);
+    }
+  };
 
   /* =========================================================
      MENÜYÜ GETİR
@@ -75,12 +813,13 @@ export default function YonetimPage() {
   const fetchMenu = async () => {
     setLoading(true);
 
-    const { data, error } = await supabase
-      .from("menu_items")
-      .select("*")
-      .order("id", {
-        ascending: true,
-      });
+    const { data, error } =
+      await supabase
+        .from("menu_items")
+        .select("*")
+        .order("id", {
+          ascending: true,
+        });
 
     if (error) {
       console.error(
@@ -97,20 +836,27 @@ export default function YonetimPage() {
     }
 
     setItems(
-      (data || []).map((item: any) => ({
-        id: Number(item.id),
-        name: item.name || "",
-        description: item.description || "",
-        price: Number(item.price || 0),
-        category:
-          item.category ||
-          categories[0],
-        image: item.image || "",
-        is_active:
-          item.is_active !== false,
-        created_at:
-          item.created_at,
-      }))
+      (data || []).map(
+        (item: any) => ({
+          id: Number(item.id),
+          name: item.name || "",
+          description:
+            item.description || "",
+          price: Number(
+            item.price || 0
+          ),
+          category:
+            item.category ||
+            availableCategories[0] ||
+            "",
+          image:
+            item.image || "",
+          is_active:
+            item.is_active !== false,
+          created_at:
+            item.created_at,
+        })
+      )
     );
 
     setLoading(false);
@@ -128,15 +874,17 @@ export default function YonetimPage() {
       | number
       | boolean
   ) => {
-    setItems((currentItems) =>
-      currentItems.map((item) =>
-        item.id === id
-          ? {
-              ...item,
-              [field]: value,
-            }
-          : item
-      )
+    setItems(
+      (currentItems) =>
+        currentItems.map(
+          (item) =>
+            item.id === id
+              ? {
+                  ...item,
+                  [field]: value,
+                }
+              : item
+        )
     );
   };
 
@@ -145,10 +893,6 @@ export default function YonetimPage() {
      ========================================================= */
 
   const addNewItem = () => {
-    /*
-     * Veritabanındaki gerçek ID'lerle
-     * çakışmaması için negatif geçici ID.
-     */
     const temporaryId =
       -Date.now();
 
@@ -157,26 +901,23 @@ export default function YonetimPage() {
       name: "",
       description: "",
       price: 0,
-      category: categories[0],
+      category:
+        availableCategories[0] ||
+        "",
       image: "",
       is_active: true,
     };
 
-    setItems((currentItems) => [
-      newItem,
-      ...currentItems,
-    ]);
+    setItems(
+      (currentItems) => [
+        newItem,
+        ...currentItems,
+      ]
+    );
 
-    /*
-     * Yeni ürün eklendiğinde otomatik
-     * olarak arama filtresini kaldır.
-     */
     setSearch("");
     setSelectedCategory("Tümü");
 
-    /*
-     * Biraz aşağı kaydır.
-     */
     setTimeout(() => {
       window.scrollTo({
         top: 0,
@@ -191,7 +932,7 @@ export default function YonetimPage() {
 
   const handleFileChange = (
     item: MenuItem,
-    event: React.ChangeEvent<HTMLInputElement>
+    event: ChangeEvent<HTMLInputElement>
   ) => {
     const file =
       event.target.files?.[0];
@@ -200,9 +941,6 @@ export default function YonetimPage() {
       return;
     }
 
-    /*
-     * Sadece resim.
-     */
     if (
       !file.type.startsWith(
         "image/"
@@ -216,9 +954,6 @@ export default function YonetimPage() {
       return;
     }
 
-    /*
-     * 10 MB sınırı.
-     */
     if (
       file.size >
       10 * 1024 * 1024
@@ -231,51 +966,44 @@ export default function YonetimPage() {
       return;
     }
 
-    /*
-     * Eski preview varsa temizle.
-     */
     if (
-      previewUrls.current[item.id]
+      previewUrls.current[
+        item.id
+      ]
     ) {
       URL.revokeObjectURL(
-        previewUrls.current[item.id]!
+        previewUrls.current[
+          item.id
+        ]!
       );
     }
 
-    /*
-     * Dosyayı geçici olarak sakla.
-     */
-    pendingFiles.current[item.id] =
-      file;
+    pendingFiles.current[
+      item.id
+    ] = file;
 
-    /*
-     * Önizleme oluştur.
-     */
     const previewUrl =
       URL.createObjectURL(file);
 
-    previewUrls.current[item.id] =
-      previewUrl;
+    previewUrls.current[
+      item.id
+    ] = previewUrl;
 
-    /*
-     * Ekranda önizleme olarak göster.
-     */
-    setItems((currentItems) =>
-      currentItems.map(
-        (currentItem) =>
-          currentItem.id === item.id
-            ? {
-                ...currentItem,
-                image: previewUrl,
-              }
-            : currentItem
-      )
+    setItems(
+      (currentItems) =>
+        currentItems.map(
+          (currentItem) =>
+            currentItem.id ===
+            item.id
+              ? {
+                  ...currentItem,
+                  image:
+                    previewUrl,
+                }
+              : currentItem
+        )
     );
 
-    /*
-     * Aynı dosyanın tekrar
-     * seçilebilmesini sağlar.
-     */
     event.target.value = "";
   };
 
@@ -317,11 +1045,12 @@ export default function YonetimPage() {
 
     const {
       data: publicUrlData,
-    } = supabase.storage
-      .from("menu-images")
-      .getPublicUrl(
-        fileName
-      );
+    } =
+      supabase.storage
+        .from("menu-images")
+        .getPublicUrl(
+          fileName
+        );
 
     return (
       publicUrlData.publicUrl
@@ -335,15 +1064,9 @@ export default function YonetimPage() {
   const saveItem = async (
     item: MenuItem
   ) => {
-    /*
-     * Yeni ürün mü?
-     */
     const isNew =
       item.id < 0;
 
-    /*
-     * Zorunlu alan kontrolü.
-     */
     if (
       !item.name.trim()
     ) {
@@ -374,16 +1097,7 @@ export default function YonetimPage() {
     setSavingId(item.id);
 
     try {
-      /*
-       * =====================================================
-       * YENİ ÜRÜN
-       * =====================================================
-       */
-
       if (isNew) {
-        /*
-         * Önce ürünü veritabanına ekliyoruz.
-         */
         const {
           data: insertedData,
           error: insertError,
@@ -398,7 +1112,8 @@ export default function YonetimPage() {
               "",
 
             price:
-              Number(item.price) || 0,
+              Number(item.price) ||
+              0,
 
             category:
               item.category,
@@ -429,10 +1144,6 @@ export default function YonetimPage() {
         let finalItem =
           insertedData as MenuItem;
 
-        /*
-         * Yeni ürüne fotoğraf seçildiyse
-         * şimdi Storage'a yükle.
-         */
         const pendingFile =
           pendingFiles.current[
             item.id
@@ -450,10 +1161,6 @@ export default function YonetimPage() {
                 pendingFile
               );
 
-            /*
-             * Fotoğraf URL'sini
-             * veritabanına kaydet.
-             */
             const {
               data: updatedData,
               error:
@@ -496,7 +1203,10 @@ export default function YonetimPage() {
             );
 
             alert(
-              `Ürün eklendi fakat fotoğraf yüklenemedi.\n\n${error?.message || "Bilinmeyen hata"}`
+              `Ürün eklendi fakat fotoğraf yüklenemedi.\n\n${
+                error?.message ||
+                "Bilinmeyen hata"
+              }`
             );
           }
 
@@ -505,10 +1215,6 @@ export default function YonetimPage() {
           );
         }
 
-        /*
-         * Geçici ürünü gerçek
-         * ürünle değiştir.
-         */
         setItems(
           (currentItems) =>
             currentItems.map(
@@ -545,12 +1251,6 @@ export default function YonetimPage() {
         return;
       }
 
-      /*
-       * =====================================================
-       * MEVCUT ÜRÜN
-       * =====================================================
-       */
-
       let imageUrl =
         item.image;
 
@@ -559,10 +1259,6 @@ export default function YonetimPage() {
           item.id
         ];
 
-      /*
-       * Yeni fotoğraf seçildiyse
-       * önce Storage'a yükle.
-       */
       if (pendingFile) {
         setUploadingId(
           item.id
@@ -581,12 +1277,16 @@ export default function YonetimPage() {
           );
 
           alert(
-            `Fotoğraf yüklenemedi.\n\n${error?.message || "Bilinmeyen hata"}`
+            `Fotoğraf yüklenemedi.\n\n${
+              error?.message ||
+              "Bilinmeyen hata"
+            }`
           );
 
           setUploadingId(
             null
           );
+
           return;
         }
 
@@ -595,9 +1295,6 @@ export default function YonetimPage() {
         );
       }
 
-      /*
-       * Supabase'e kaydet.
-       */
       const {
         data,
         error,
@@ -612,7 +1309,8 @@ export default function YonetimPage() {
             "",
 
           price:
-            Number(item.price) || 0,
+            Number(item.price) ||
+            0,
 
           category:
             item.category,
@@ -648,9 +1346,6 @@ export default function YonetimPage() {
       const updatedItem =
         data as MenuItem;
 
-      /*
-       * Ekranı güncelle.
-       */
       setItems(
         (currentItems) =>
           currentItems.map(
@@ -662,9 +1357,6 @@ export default function YonetimPage() {
           )
       );
 
-      /*
-       * Geçici dosya bilgisini temizle.
-       */
       delete pendingFiles
         .current[item.id];
 
@@ -699,10 +1391,6 @@ export default function YonetimPage() {
   const deleteItem = async (
     item: MenuItem
   ) => {
-    /*
-     * Yeni ve henüz kaydedilmemiş
-     * ürünse sadece ekrandan kaldır.
-     */
     if (item.id < 0) {
       if (
         previewUrls.current[
@@ -748,9 +1436,6 @@ export default function YonetimPage() {
     );
 
     try {
-      /*
-       * Önce veritabanındaki ürünü sil.
-       */
       const {
         error,
       } = await supabase
@@ -774,9 +1459,6 @@ export default function YonetimPage() {
         return;
       }
 
-      /*
-       * Ekrandan kaldır.
-       */
       setItems(
         (currentItems) =>
           currentItems.filter(
@@ -786,9 +1468,6 @@ export default function YonetimPage() {
           )
       );
 
-      /*
-       * Geçici bilgileri temizle.
-       */
       delete pendingFiles
         .current[item.id];
 
@@ -832,8 +1511,10 @@ export default function YonetimPage() {
             "tr-TR"
           )
           .includes(searchText) ||
-        (item.description ||
-          "")
+        (
+          item.description ||
+          ""
+        )
           .toLocaleLowerCase(
             "tr-TR"
           )
@@ -870,9 +1551,25 @@ export default function YonetimPage() {
                 EDREMİT SOSYAL TESİS
               </p>
 
-              <h1 className="mt-2 text-3xl font-bold">
-                ⚙️ Menü Yönetim Paneli
-              </h1>
+              <div className="mt-2 flex items-center gap-3">
+
+                <h1 className="text-3xl font-bold">
+                  Menü Yönetim Paneli
+                </h1>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setShowSettings(true)
+                  }
+                  aria-label="Ayarlar"
+                  title="Ayarlar"
+                  className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/10 text-2xl transition hover:bg-white/20 active:scale-95"
+                >
+                  ⚙️
+                </button>
+
+              </div>
 
               <p className="mt-2 text-sm text-gray-400">
                 Menü ürünlerini buradan
@@ -887,6 +1584,13 @@ export default function YonetimPage() {
                   className="inline-flex rounded-xl bg-white px-5 py-3 font-bold text-[#061b3d] shadow transition hover:bg-gray-100 active:scale-95"
                 >
                   👨‍🍳 Garson Paneline Dön
+                </a>
+
+                <a
+                  href="/mutfak"
+                  className="inline-flex rounded-xl bg-white px-5 py-3 font-bold text-[#061b3d] shadow transition hover:bg-gray-100 active:scale-95"
+                >
+                  🍳 Mutfak Paneline Geç
                 </a>
 
                 <button
@@ -917,6 +1621,182 @@ export default function YonetimPage() {
         </div>
 
       </header>
+
+      {/* =====================================================
+          ŞİFRE YÖNETİMİ MODALI
+          ===================================================== */}
+
+      {showSettings && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          onClick={() =>
+            setShowSettings(false)
+          }
+        >
+
+          <div
+            className="w-full max-w-2xl rounded-3xl bg-white p-6 text-gray-900 shadow-2xl"
+            onClick={(e) =>
+              e.stopPropagation()
+            }
+          >
+
+            <div className="mb-6 flex items-start justify-between gap-4">
+
+              <div>
+
+                <h2 className="text-2xl font-bold">
+                  🔐 Şifre Yönetimi
+                </h2>
+
+                <p className="mt-1 text-sm text-gray-500">
+                  Yönetici, garson veya mutfak
+                  hesabının şifresini
+                  değiştirebilirsiniz.
+                </p>
+
+              </div>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setShowSettings(false)
+                }
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-2xl font-bold text-gray-700 transition hover:bg-gray-200 active:scale-95"
+              >
+                ×
+              </button>
+
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+
+              <div>
+
+                <label className="mb-2 block text-sm font-bold">
+                  Değiştirilecek hesap
+                </label>
+
+                <select
+                  value={passwordTarget}
+                  onChange={(e) =>
+                    setPasswordTarget(
+                      e.target.value
+                    )
+                  }
+                  className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none focus:border-[#061b3d] focus:ring-2 focus:ring-blue-100"
+                >
+                  <option value="garson">
+                    Garson
+                  </option>
+
+                  <option value="mutfak">
+                    Mutfak
+                  </option>
+
+                  <option value="admin">
+                    Yönetici
+                  </option>
+                </select>
+
+              </div>
+
+              <div>
+
+                <label className="mb-2 block text-sm font-bold">
+                  Mevcut admin şifresi
+                </label>
+
+                <input
+                  type="password"
+                  value={adminPassword}
+                  onChange={(e) =>
+                    setAdminPassword(
+                      e.target.value
+                    )
+                  }
+                  placeholder="Mevcut admin şifresi"
+                  autoComplete="current-password"
+                  className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none focus:border-[#061b3d] focus:ring-2 focus:ring-blue-100"
+                />
+
+              </div>
+
+              <div>
+
+                <label className="mb-2 block text-sm font-bold">
+                  Yeni şifre
+                </label>
+
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) =>
+                    setNewPassword(
+                      e.target.value
+                    )
+                  }
+                  placeholder="En az 6 karakter"
+                  autoComplete="new-password"
+                  className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none focus:border-[#061b3d] focus:ring-2 focus:ring-blue-100"
+                />
+
+              </div>
+
+              <div>
+
+                <label className="mb-2 block text-sm font-bold">
+                  Yeni şifre tekrar
+                </label>
+
+                <input
+                  type="password"
+                  value={newPasswordAgain}
+                  onChange={(e) =>
+                    setNewPasswordAgain(
+                      e.target.value
+                    )
+                  }
+                  placeholder="Yeni şifreyi tekrar girin"
+                  autoComplete="new-password"
+                  className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none focus:border-[#061b3d] focus:ring-2 focus:ring-blue-100"
+                />
+
+              </div>
+
+            </div>
+
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+
+              <button
+                type="button"
+                onClick={() =>
+                  setShowSettings(false)
+                }
+                className="flex-1 rounded-xl border-2 border-gray-300 bg-white py-3 font-bold text-gray-700 transition hover:bg-gray-50 active:scale-95"
+              >
+                İptal
+              </button>
+
+              <button
+                type="button"
+                onClick={changePassword}
+                disabled={
+                  changingPassword
+                }
+                className="flex-1 rounded-xl bg-red-600 py-3 font-bold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50 active:scale-95"
+              >
+                {changingPassword
+                  ? "Şifre değiştiriliyor..."
+                  : "🔐 Şifreyi Değiştir"}
+              </button>
+
+            </div>
+
+          </div>
+
+        </div>
+      )}
 
       {/* =====================================================
           KONTROLLER
@@ -951,7 +1831,10 @@ export default function YonetimPage() {
             <div className="flex items-end">
 
               <button
-                onClick={fetchMenu}
+                onClick={() => {
+                  fetchMenu();
+                  fetchCategories();
+                }}
                 className="w-full rounded-xl bg-[#061b3d] px-6 py-3 font-bold text-white transition hover:bg-[#0b2d62] active:scale-95 md:w-auto"
               >
                 🔄 Yenile
@@ -961,48 +1844,375 @@ export default function YonetimPage() {
 
           </div>
 
-          {/* KATEGORİLER */}
+          {/* =================================================
+              KATEGORİLER
+              ================================================= */}
 
-          <div className="mt-5">
+          <div className="mt-5 border-t border-gray-200 pt-5">
 
-            <label className="mb-2 block text-sm font-bold">
-              📂 Kategori
-            </label>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
 
-            <div className="flex gap-2 overflow-x-auto pb-2">
+              <div>
 
-              {[
-                "Tümü",
-                ...categories,
-              ].map(
-                (category) => (
+                <label className="block text-sm font-bold">
+                  📂 Kategoriler
+                </label>
 
-                  <button
-                    key={category}
-                    onClick={() =>
-                      setSelectedCategory(
+                <p className="mt-1 text-xs text-gray-500">
+                  Kategorileri ekleyebilir,
+                  isimlerini ve görsellerini
+                  değiştirebilirsiniz.
+                </p>
+
+              </div>
+
+              <div className="rounded-full bg-gray-100 px-4 py-2 text-xs font-bold text-gray-600">
+                {categoryLoading
+                  ? "Yükleniyor..."
+                  : `${categoryList.length} kategori`}
+              </div>
+
+            </div>
+
+            {/* KATEGORİ FİLTRELERİ */}
+
+            <div className="mt-4">
+
+              <label className="mb-2 block text-sm font-bold">
+                Menü Filtresi
+              </label>
+
+              <div className="flex gap-2 overflow-x-auto pb-2">
+
+                {[
+                  "Tümü",
+                  ...availableCategories,
+                ].map(
+                  (category) => (
+
+                    <button
+                      key={category}
+                      onClick={() =>
+                        setSelectedCategory(
+                          category
+                        )
+                      }
+                      className={`shrink-0 rounded-full border px-4 py-2 text-sm font-semibold transition ${
+                        selectedCategory ===
                         category
-                      )
-                    }
-                    className={`shrink-0 rounded-full border px-4 py-2 text-sm font-semibold transition ${
-                      selectedCategory ===
-                      category
-                        ? "border-[#061b3d] bg-[#061b3d] text-white"
-                        : "border-gray-300 bg-gray-50 text-gray-700 hover:bg-gray-100"
-                    }`}
-                  >
-                    {category}
-                  </button>
+                          ? "border-[#061b3d] bg-[#061b3d] text-white"
+                          : "border-gray-300 bg-gray-50 text-gray-700 hover:bg-gray-100"
+                      }`}
+                    >
+                      {category}
+                    </button>
 
-                )
+                  )
+                )}
+
+              </div>
+
+            </div>
+
+            {/* YENİ KATEGORİ EKLE */}
+
+            <div className="mt-5 rounded-2xl border-2 border-dashed border-[#061b3d]/20 bg-gray-50 p-4">
+
+              <h3 className="text-base font-bold text-[#061b3d]">
+                ➕ Yeni Kategori Ekle
+              </h3>
+
+              <div className="mt-4 grid gap-3 md:grid-cols-[1fr_1fr_auto]">
+
+                <input
+                  type="text"
+                  value={newCategoryName}
+                  onChange={(e) =>
+                    setNewCategoryName(
+                      e.target.value
+                    )
+                  }
+                  placeholder="Kategori adı"
+                  className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 outline-none focus:border-[#061b3d] focus:ring-2 focus:ring-blue-100"
+                />
+
+                <label className="flex cursor-pointer items-center rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-50">
+
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={
+                      handleNewCategoryImage
+                    }
+                    className="hidden"
+                  />
+
+                  📷{" "}
+                  <span className="ml-2 truncate">
+                    {newCategoryImage
+                      ? newCategoryImage.name
+                      : "Kategori görseli seç"}
+                  </span>
+
+                </label>
+
+                <button
+                  type="button"
+                  onClick={addCategory}
+                  disabled={
+                    savingCategory
+                  }
+                  className="rounded-xl bg-[#061b3d] px-5 py-3 font-bold text-white transition hover:bg-[#0b2d62] disabled:cursor-not-allowed disabled:opacity-50 active:scale-95"
+                >
+                  {savingCategory
+                    ? "⏳ Kaydediliyor..."
+                    : "➕ Kategori Ekle"}
+                </button>
+
+              </div>
+
+              {newCategoryImage && (
+                <p className="mt-3 rounded-lg bg-blue-50 p-2 text-xs font-semibold text-blue-700">
+                  📷 Görsel seçildi:
+                  {" "}
+                  {newCategoryImage.name}
+                </p>
+              )}
+
+            </div>
+
+            {/* KATEGORİ YÖNETİM KARTLARI */}
+
+            <div className="mt-5">
+
+              {categoryLoading ? (
+
+                <div className="rounded-2xl bg-gray-50 p-6 text-center text-gray-500">
+                  ⏳ Kategoriler yükleniyor...
+                </div>
+
+              ) : categoryList.length === 0 ? (
+
+                <div className="rounded-2xl bg-gray-50 p-6 text-center text-gray-500">
+                  Henüz kategori bulunmuyor.
+                </div>
+
+              ) : (
+
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+
+                  {categoryList.map(
+                    (category) => {
+
+                      const isEditing =
+                        editingCategoryId ===
+                        category.id;
+
+                      return (
+                        <div
+                          key={
+                            category.id
+                          }
+                          className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm"
+                        >
+
+                          {/* KATEGORİ GÖRSELİ */}
+
+                          <div className="relative h-40 bg-gray-100">
+
+                            {category.image ? (
+
+                              <img
+                                src={
+                                  category.image
+                                }
+                                alt={
+                                  category.name
+                                }
+                                className="h-full w-full object-cover"
+                              />
+
+                            ) : (
+
+                              <div className="flex h-full items-center justify-center text-5xl">
+                                📂
+                              </div>
+
+                            )}
+
+                            <div className="absolute left-3 top-3 rounded-full bg-black/60 px-3 py-1 text-xs font-bold text-white">
+                              #{category.id}
+                            </div>
+
+                          </div>
+
+                          <div className="p-4">
+
+                            {!isEditing ? (
+
+                              <>
+                                <h4 className="text-lg font-bold text-[#061b3d]">
+                                  {
+                                    category.name
+                                  }
+                                </h4>
+
+                                <p className="mt-1 text-xs text-gray-500">
+                                  {category.image
+                                    ? "Görsel mevcut"
+                                    : "Görsel eklenmemiş"}
+                                </p>
+
+                                <div className="mt-4 flex gap-2">
+
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      startEditCategory(
+                                        category
+                                      )
+                                    }
+                                    className="flex-1 rounded-xl bg-[#061b3d] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#0b2d62] active:scale-95"
+                                  >
+                                    ✏️ Düzenle
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      deleteCategory(
+                                        category
+                                      )
+                                    }
+                                    disabled={
+                                      deletingCategoryId ===
+                                      category.id
+                                    }
+                                    className="rounded-xl border-2 border-red-500 bg-white px-4 py-3 text-sm font-bold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 active:scale-95"
+                                  >
+                                    {deletingCategoryId ===
+                                    category.id
+                                      ? "⏳"
+                                      : "🗑️"}
+                                  </button>
+
+                                </div>
+                              </>
+
+                            ) : (
+
+                              <>
+                                <label className="mb-2 block text-sm font-bold">
+                                  Kategori Adı
+                                </label>
+
+                                <input
+                                  type="text"
+                                  value={
+                                    editingCategoryName
+                                  }
+                                  onChange={(e) =>
+                                    setEditingCategoryName(
+                                      e.target.value
+                                    )
+                                  }
+                                  className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#061b3d] focus:ring-2 focus:ring-blue-100"
+                                />
+
+                                <label className="mt-4 flex cursor-pointer items-center rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-100">
+
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={
+                                      handleEditingCategoryImage
+                                    }
+                                    className="hidden"
+                                  />
+
+                                  📷
+
+                                  <span className="ml-2 truncate">
+                                    {editingCategoryImage
+                                      ? editingCategoryImage.name
+                                      : "Görseli değiştir"}
+                                  </span>
+
+                                </label>
+
+                                {editingCategoryImage && (
+                                  <p className="mt-2 rounded-lg bg-blue-50 p-2 text-xs font-semibold text-blue-700">
+                                    Yeni görsel seçildi.
+                                    {" "}
+                                    Kaydettiğinizde
+                                    yüklenecek.
+                                  </p>
+                                )}
+
+                                <div className="mt-4 flex gap-2">
+
+                                  <button
+                                    type="button"
+                                    onClick={
+                                      saveCategory
+                                    }
+                                    disabled={
+                                      savingCategory
+                                    }
+                                    className="flex-1 rounded-xl bg-green-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50 active:scale-95"
+                                  >
+                                    {savingCategory
+                                      ? "⏳ Kaydediliyor..."
+                                      : "💾 Kaydet"}
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={
+                                      cancelEditCategory
+                                    }
+                                    disabled={
+                                      savingCategory
+                                    }
+                                    className="flex-1 rounded-xl border-2 border-gray-300 bg-white px-4 py-3 text-sm font-bold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 active:scale-95"
+                                  >
+                                    İptal
+                                  </button>
+
+                                </div>
+                              </>
+
+                            )}
+
+                          </div>
+
+                        </div>
+                      );
+                    }
+                  )}
+
+                </div>
+
               )}
 
             </div>
 
           </div>
 
-          <div className="mt-4 text-sm text-gray-500">
-            {filteredItems.length} ürün gösteriliyor.
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+
+            <div className="text-sm text-gray-500">
+              {filteredItems.length} ürün gösteriliyor.
+            </div>
+
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="rounded-xl bg-red-600 px-5 py-3 font-bold text-white shadow transition hover:bg-red-700 active:scale-95"
+            >
+              🚪 Çıkış Yap
+            </button>
+
           </div>
 
         </div>
@@ -1068,9 +2278,7 @@ export default function YonetimPage() {
                   className="overflow-hidden rounded-3xl bg-white text-gray-900 shadow-2xl"
                 >
 
-                  {/* =================================================
-                      FOTOĞRAF
-                      ================================================= */}
+                  {/* FOTOĞRAF */}
 
                   <div className="relative h-56 bg-gray-100">
 
@@ -1115,9 +2323,7 @@ export default function YonetimPage() {
 
                   </div>
 
-                  {/* =================================================
-                      FORM
-                      ================================================= */}
+                  {/* FORM */}
 
                   <div className="p-5">
 
@@ -1172,7 +2378,9 @@ export default function YonetimPage() {
 
                       <input
                         type="text"
-                        value={item.name}
+                        value={
+                          item.name
+                        }
                         onChange={(e) =>
                           updateItem(
                             item.id,
@@ -1258,14 +2466,28 @@ export default function YonetimPage() {
                             updateItem(
                               item.id,
                               "category",
-                              e.target
-                                .value
+                              e.target.value
                             )
                           }
                           className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 outline-none focus:border-[#061b3d] focus:ring-2 focus:ring-blue-100"
                         >
 
-                          {categories.map(
+                          {!availableCategories.includes(
+                            item.category
+                          ) &&
+                            item.category && (
+                              <option
+                                value={
+                                  item.category
+                                }
+                              >
+                                {
+                                  item.category
+                                }
+                              </option>
+                            )}
+
+                          {availableCategories.map(
                             (
                               category
                             ) => (
@@ -1292,9 +2514,7 @@ export default function YonetimPage() {
 
                     </div>
 
-                    {/* =================================================
-                        FOTOĞRAF SEÇ
-                        ================================================= */}
+                    {/* FOTOĞRAF */}
 
                     <div className="mt-5 rounded-2xl border-2 border-dashed border-gray-300 bg-gray-50 p-4">
 
@@ -1363,9 +2583,7 @@ export default function YonetimPage() {
 
                     </div>
 
-                    {/* =================================================
-                        KAYDET
-                        ================================================= */}
+                    {/* KAYDET */}
 
                     <button
                       onClick={() =>
@@ -1389,9 +2607,7 @@ export default function YonetimPage() {
                         : "💾 Kaydet"}
                     </button>
 
-                    {/* =================================================
-                        SİL
-                        ================================================= */}
+                    {/* SİL */}
 
                     <button
                       onClick={() =>

@@ -23,6 +23,29 @@ type Order = {
 };
 
 export default function GarsonPage() {
+  const [isAdmin, setIsAdmin] = useState(false);
+
+useEffect(() => {
+  fetch("/api/me")
+    .then((response) => response.json())
+    .then((data) => {
+      setIsAdmin(data.role === "admin");
+    })
+    .catch(() => {
+      setIsAdmin(false);
+    });
+}, []);
+    const handleLogout = async () => {
+    try {
+      await fetch("/api/logout", {
+        method: "POST",
+      });
+    } catch (error) {
+      console.error("Çıkış hatası:", error);
+    }
+
+    window.location.href = "/giris";
+  };
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTable, setSelectedTable] = useState<number | null>(null);
@@ -374,13 +397,23 @@ export default function GarsonPage() {
               </p>
             </div>
 
-            <a
-              href="/yonetim"
-              className="inline-flex w-fit items-center justify-center rounded-xl bg-white px-5 py-3 font-bold text-red-700 shadow transition hover:bg-gray-100 active:scale-95"
-            >
-              ⚙️ Yönetim Paneli
-            </a>
-
+       {isAdmin && (
+  <button
+    type="button"
+    onClick={() => {
+      window.location.href = "/yonetim";
+    }}
+    className="inline-flex w-fit items-center justify-center rounded-xl bg-white px-5 py-3 font-bold text-red-700 shadow transition hover:bg-gray-100 active:scale-95"
+  >
+    ⚙️ Yönetim Paneline Dön
+  </button>
+)}     
+<button
+  onClick={handleLogout}
+  className="inline-flex w-fit items-center justify-center rounded-xl bg-black px-5 py-3 font-bold text-white shadow transition hover:bg-gray-900 active:scale-95"
+>
+  🚪 Çıkış Yap
+</button>
           </div>
 
           <div className="mt-4 flex flex-wrap gap-2">
