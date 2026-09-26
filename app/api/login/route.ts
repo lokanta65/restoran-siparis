@@ -67,9 +67,11 @@ export async function POST(request: Request) {
       role: user.role,
     });
 
-    response.cookies.set("restoran_session", token, {
+    response.cookies.set({
+      name: "restoran_session",
+      value: token,
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: true,
       sameSite: "lax",
       path: "/",
       maxAge: 60 * 60 * 12,
