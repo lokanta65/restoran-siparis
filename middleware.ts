@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const SESSION_SECRET = process.env.SESSION_SECRET || "";
+const SESSION_SECRET =
+  process.env.SESSION_SECRET || "degistirilecek-guclu-bir-gizli-anahtar";
 
 async function createSignature(payload: string) {
   const encoder = new TextEncoder();
