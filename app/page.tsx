@@ -32,7 +32,7 @@ type Order = {
   status: string;
   special_request?: string | null;
   created_at: string;
-    is_closed?: boolean;
+  is_closed?: boolean;
 };
 
 /* =========================================================
@@ -50,33 +50,6 @@ const categoryNames = [
 ];
 
 /* =========================================================
-   KATEGORİ GÖRSELLERİ
-   ========================================================= */
-
-const categoryImages: Record<string, string> = {
-  Kahvaltı:
-    "https://images.unsplash.com/photo-1533089860892-a7c6f0a88666?auto=format&fit=crop&w=900&q=85",
-
-  "Omlet ve Yumurta Çeşitleri":
-    "https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&w=900&q=85",
-
-  "Ara Sıcaklar":
-    "https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=900&q=85",
-
-  "Fast Food":
-    "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=900&q=85",
-
-  Çorbalar:
-    "https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=900&q=85",
-
-  "Ana Yemekler":
-    "https://images.unsplash.com/photo-1558030006-450675393462?auto=format&fit=crop&w=900&q=85",
-
-  "Pide Çeşitleri":
-    "https://images.unsplash.com/photo-1574071318508-1cdbab80d002?auto=format&fit=crop&w=900&q=85",
-};
-
-/* =========================================================
    ANA MENÜ
    ========================================================= */
 
@@ -87,6 +60,10 @@ function MenuPage() {
 
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [menuLoading, setMenuLoading] = useState(true);
+
+  /* Kategori görselleri artık Supabase'den geliyor */
+  const [categoryImages, setCategoryImages] =
+    useState<Record<string, string>>({});
 
   const [cart, setCart] = useState<CartItem[]>([]);
   const [specialRequest, setSpecialRequest] = useState("");
@@ -143,6 +120,34 @@ function MenuPage() {
           }));
 
         setMenuItems(activeItems);
+      }
+
+      /* =====================================================
+         KATEGORİ GÖRSELLERİNİ SUPABASE'DEN GETİR
+         ===================================================== */
+
+      const {
+        data: categoryData,
+        error: categoryError,
+      } = await supabase
+        .from("menu_categories")
+        .select("name,image");
+
+      if (categoryError) {
+        console.error(
+          "Kategori görselleri alınamadı:",
+          categoryError
+        );
+      } else if (categoryData) {
+        const imageMap: Record<string, string> = {};
+
+        categoryData.forEach((category: any) => {
+          if (category.name && category.image) {
+            imageMap[category.name] = category.image;
+          }
+        });
+
+        setCategoryImages(imageMap);
       }
 
       setMenuLoading(false);
@@ -1047,9 +1052,7 @@ function MenuPage() {
 
                     <img
                       src={
-                        categoryImages[
-                          category
-                        ] ||
+                        categoryImages[category] ||
                         getProductImage(
                           categoryItem ||
                             menuItems[0]
@@ -1117,7 +1120,7 @@ function MenuPage() {
                   menuItems.filter(
                     (item) =>
                       item.category ===
-                      category &&
+                        category &&
                       item.is_active === true
                   );
 
@@ -1149,9 +1152,7 @@ function MenuPage() {
 
                         <img
                           src={
-                            categoryImages[
-                              category
-                            ] ||
+                            categoryImages[category] ||
                             getProductImage(
                               categoryItems[0]
                             )
