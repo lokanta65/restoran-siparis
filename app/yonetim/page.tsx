@@ -73,6 +73,9 @@ export default function YonetimPage() {
   const [selectedCategory, setSelectedCategory] =
     useState("Tümü");
 
+  const [adminSection, setAdminSection] =
+    useState<"categories" | "menu">("menu");
+
   /* =========================================================
      KATEGORİ STATE
      ========================================================= */
@@ -287,6 +290,54 @@ export default function YonetimPage() {
           (category) => category.name
         )
       : fallbackCategories;
+
+  /* =========================================================
+     KATEGORİ ÜRÜN SAYISI
+     ========================================================= */
+
+  const categoryProductCount = (
+    categoryName: string
+  ) => {
+    return items.filter(
+      (item) =>
+        item.category === categoryName
+    ).length;
+  };
+
+  /* =========================================================
+     SEÇİLİ KATEGORİNİN ÜRÜNLERİ
+     ========================================================= */
+
+  const selectedCategoryItems =
+    selectedCategory === "Tümü"
+      ? []
+      : items.filter((item) => {
+          const searchText =
+            search.toLocaleLowerCase(
+              "tr-TR"
+            );
+
+          const matchesSearch =
+            item.name
+              .toLocaleLowerCase(
+                "tr-TR"
+              )
+              .includes(searchText) ||
+            (
+              item.description ||
+              ""
+            )
+              .toLocaleLowerCase(
+                "tr-TR"
+              )
+              .includes(searchText);
+
+          return (
+            item.category ===
+              selectedCategory &&
+            matchesSearch
+          );
+        });
 
   /* =========================================================
      KATEGORİ FOTOĞRAFI KONTROLÜ
@@ -881,8 +932,10 @@ export default function YonetimPage() {
       description: "",
       price: 0,
       category:
-        availableCategories[0] ||
-        "",
+        selectedCategory !== "Tümü"
+          ? selectedCategory
+          : availableCategories[0] ||
+            "",
       image: "",
       is_active: true,
     };
@@ -895,7 +948,15 @@ export default function YonetimPage() {
     );
 
     setSearch("");
-    setSelectedCategory("Tümü");
+
+    if (
+      selectedCategory === "Tümü" &&
+      availableCategories.length > 0
+    ) {
+      setSelectedCategory(
+        availableCategories[0]
+      );
+    }
 
     setTimeout(() => {
       window.scrollTo({
@@ -1473,44 +1534,6 @@ export default function YonetimPage() {
     }
   };
 
-  /* =========================================================
-     ÜRÜN FİLTRELEME
-     ========================================================= */
-
-  const filteredItems =
-    items.filter((item) => {
-      const searchText =
-        search.toLocaleLowerCase(
-          "tr-TR"
-        );
-
-      const matchesSearch =
-        item.name
-          .toLocaleLowerCase(
-            "tr-TR"
-          )
-          .includes(searchText) ||
-        (
-          item.description ||
-          ""
-        )
-          .toLocaleLowerCase(
-            "tr-TR"
-          )
-          .includes(searchText);
-
-      const matchesCategory =
-        selectedCategory ===
-          "Tümü" ||
-        item.category ===
-          selectedCategory;
-
-      return (
-        matchesSearch &&
-        matchesCategory
-      );
-    });
-
   return (
     <main className="min-h-screen bg-[#061b3d] pb-10 text-white">
 
@@ -1518,21 +1541,21 @@ export default function YonetimPage() {
           HEADER
           ===================================================== */}
 
-      <header className="border-b border-white/10 bg-[#04152f] px-4 py-4">
+      <header className="border-b border-white/10 bg-[#04152f] px-4 py-3">
 
         <div className="mx-auto max-w-7xl">
 
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 
             <div>
 
-              <p className="text-xs tracking-[0.2em] text-[#e8c866]">
+              <p className="text-[10px] tracking-[0.2em] text-[#e8c866]">
                 EDREMİT SOSYAL TESİS
               </p>
 
               <div className="mt-1 flex items-center gap-2">
 
-                <h1 className="text-xl font-bold">
+                <h1 className="text-lg font-bold">
                   Menü Yönetim Paneli
                 </h1>
 
@@ -1543,53 +1566,66 @@ export default function YonetimPage() {
                   }
                   aria-label="Ayarlar"
                   title="Ayarlar"
-                  className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/10 text-lg transition hover:bg-white/20 active:scale-95"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10 text-base transition hover:bg-white/20 active:scale-95"
                 >
                   ⚙️
                 </button>
 
               </div>
 
-              <p className="mt-1 text-xs text-gray-400">
-                Menü ürünlerini buradan
-                ekleyebilir, düzenleyebilir
-                ve silebilirsiniz.
+              <p className="mt-0.5 text-[11px] text-gray-400">
+                Menü ürünlerini ve kategorileri
+                buradan yönetin.
               </p>
 
-              <div className="mt-3 flex flex-wrap gap-2">
+              <div className="mt-2 flex flex-wrap gap-1.5">
 
                 <a
                   href="/garson"
-                  className="inline-flex rounded-lg bg-white px-3 py-1.5 text-sm font-bold text-[#061b3d] shadow transition hover:bg-gray-100 active:scale-95"
+                  className="inline-flex rounded-lg bg-white px-2.5 py-1 text-xs font-bold text-[#061b3d] shadow transition hover:bg-gray-100 active:scale-95"
                 >
-                  👨‍🍳 Garson Paneline Dön
+                  👨‍🍳 Garson
                 </a>
 
                 <a
                   href="/mutfak"
-                  className="inline-flex rounded-lg bg-white px-3 py-1.5 text-sm font-bold text-[#061b3d] shadow transition hover:bg-gray-100 active:scale-95"
+                  className="inline-flex rounded-lg bg-white px-2.5 py-1 text-xs font-bold text-[#061b3d] shadow transition hover:bg-gray-100 active:scale-95"
                 >
-                  🍳 Mutfak Paneline Geç
+                  🍳 Mutfak
                 </a>
 
                 <button
-                  onClick={addNewItem}
-                  className="inline-flex rounded-lg bg-[#e8c866] px-3 py-1.5 text-sm font-bold text-[#061b3d] shadow transition hover:bg-[#f1d477] active:scale-95"
+                  onClick={() => {
+                    setAdminSection("menu");
+
+                    if (
+                      selectedCategory ===
+                      "Tümü"
+                    ) {
+                      setSelectedCategory(
+                        availableCategories[0] ||
+                        "Tümü"
+                      );
+                    }
+
+                    addNewItem();
+                  }}
+                  className="inline-flex rounded-lg bg-[#e8c866] px-2.5 py-1 text-xs font-bold text-[#061b3d] shadow transition hover:bg-[#f1d477] active:scale-95"
                 >
-                  ➕ Yeni Ürün Ekle
+                  ➕ Yeni Ürün
                 </button>
 
               </div>
 
             </div>
 
-            <div className="self-start rounded-xl bg-white/10 px-4 py-3 text-center sm:self-auto">
+            <div className="self-start rounded-lg bg-white/10 px-3 py-2 text-center sm:self-auto">
 
-              <div className="text-2xl font-bold text-[#e8c866]">
+              <div className="text-xl font-bold text-[#e8c866]">
                 {items.length}
               </div>
 
-              <div className="text-[11px] text-gray-300">
+              <div className="text-[10px] text-gray-300">
                 Toplam Ürün
               </div>
 
@@ -1614,7 +1650,7 @@ export default function YonetimPage() {
         >
 
           <div
-            className="max-w-2xl overflow-hidden rounded-2xl bg-white p-5 text-gray-900 shadow-2xl"
+            className="w-full max-w-2xl overflow-hidden rounded-2xl bg-white p-5 text-gray-900 shadow-2xl"
             onClick={(e) =>
               e.stopPropagation()
             }
@@ -1778,420 +1814,603 @@ export default function YonetimPage() {
       )}
 
       {/* =====================================================
-          KONTROLLER
+          ANA YÖNETİM KONTROLLERİ
           ===================================================== */}
 
-      <section className="mx-auto max-w-7xl px-4 pt-4">
+      <section className="mx-auto max-w-7xl px-4 pt-3">
 
-        <div className="rounded-2xl bg-white p-4 text-gray-900 shadow-xl">
+        <div className="rounded-2xl bg-white p-3 text-gray-900 shadow-xl">
 
-          <div className="grid gap-3 md:grid-cols-[1fr_auto]">
+          {/* ANA İKİ BUTON */}
 
-            <div>
+          <div className="grid grid-cols-2 gap-2">
 
-              <label className="mb-1 block text-xs font-bold">
-                🔎 Menüde Ara
-              </label>
+            <button
+              type="button"
+              onClick={() => {
+                setAdminSection(
+                  "categories"
+                );
+                setSelectedCategory(
+                  "Tümü"
+                );
+                setSearch("");
+              }}
+              className={`rounded-xl px-3 py-2.5 text-sm font-bold transition active:scale-[0.98] ${
+                adminSection ===
+                "categories"
+                  ? "bg-[#061b3d] text-white shadow"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              📂 Kategorileri Düzenle
+            </button>
 
-              <input
-                type="text"
-                value={search}
-                onChange={(e) =>
-                  setSearch(
-                    e.target.value
-                  )
-                }
-                placeholder="Ürün adı veya açıklama ara..."
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-[#061b3d] focus:ring-2 focus:ring-blue-100"
-              />
-
-            </div>
-
-            <div className="flex items-end">
-
-              <button
-                onClick={() => {
-                  fetchMenu();
-                  fetchCategories();
-                }}
-                className="w-full rounded-lg bg-[#061b3d] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#0b2d62] active:scale-95 md:w-auto"
-              >
-                🔄 Yenile
-              </button>
-
-            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setAdminSection(
+                  "menu"
+                );
+                setSelectedCategory(
+                  "Tümü"
+                );
+                setSearch("");
+              }}
+              className={`rounded-xl px-3 py-2.5 text-sm font-bold transition active:scale-[0.98] ${
+                adminSection ===
+                "menu"
+                  ? "bg-[#061b3d] text-white shadow"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              🍽️ Menüyü Düzenle
+            </button>
 
           </div>
 
           {/* =================================================
-              KATEGORİLER
+              KATEGORİLERİ DÜZENLE
               ================================================= */}
 
-          <div className="mt-4 border-t border-gray-200 pt-4">
+          {adminSection ===
+            "categories" && (
 
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="mt-3 border-t border-gray-200 pt-3">
 
-              <div>
+              <div className="flex items-center justify-between gap-2">
 
-                <label className="block text-xs font-bold">
-                  📂 Kategoriler
-                </label>
+                <div>
 
-                <p className="mt-0.5 text-[11px] text-gray-500">
-                  Kategorileri ekleyebilir,
-                  isimlerini ve görsellerini
-                  değiştirebilirsiniz.
-                </p>
+                  <h2 className="text-sm font-bold text-[#061b3d]">
+                    📂 Kategori Yönetimi
+                  </h2>
+
+                  <p className="mt-0.5 text-[10px] text-gray-500">
+                    Kategori ekleyin, adını veya
+                    görselini değiştirin.
+                  </p>
+
+                </div>
+
+                <div className="rounded-full bg-gray-100 px-2.5 py-1 text-[10px] font-bold text-gray-600">
+                  {categoryLoading
+                    ? "Yükleniyor..."
+                    : `${categoryList.length} kategori`}
+                </div>
 
               </div>
 
-              <div className="rounded-full bg-gray-100 px-3 py-1.5 text-[11px] font-bold text-gray-600">
-                {categoryLoading
-                  ? "Yükleniyor..."
-                  : `${categoryList.length} kategori`}
-              </div>
+              {/* YENİ KATEGORİ */}
 
-            </div>
+              <div className="mt-3 rounded-xl border border-dashed border-[#061b3d]/20 bg-gray-50 p-2.5">
 
-            {/* KATEGORİ FİLTRELERİ */}
+                <h3 className="text-xs font-bold text-[#061b3d]">
+                  ➕ Yeni Kategori Ekle
+                </h3>
 
-            <div className="mt-3">
+                <div className="mt-2 grid gap-2 md:grid-cols-[1fr_1fr_auto]">
 
-              <label className="mb-1 block text-xs font-bold">
-                Menü Filtresi
-              </label>
+                  <input
+                    type="text"
+                    value={newCategoryName}
+                    onChange={(e) =>
+                      setNewCategoryName(
+                        e.target.value
+                      )
+                    }
+                    placeholder="Kategori adı"
+                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs outline-none focus:border-[#061b3d] focus:ring-2 focus:ring-blue-100"
+                  />
 
-              <div className="flex gap-1.5 overflow-x-auto pb-1">
+                  <label className="flex cursor-pointer items-center rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-semibold text-gray-700 transition hover:bg-gray-50">
 
-                {[
-                  "Tümü",
-                  ...availableCategories,
-                ].map(
-                  (category) => (
-
-                    <button
-                      key={category}
-                      onClick={() =>
-                        setSelectedCategory(
-                          category
-                        )
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={
+                        handleNewCategoryImage
                       }
-                      className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
-                        selectedCategory ===
-                        category
-                          ? "border-[#061b3d] bg-[#061b3d] text-white"
-                          : "border-gray-300 bg-gray-50 text-gray-700 hover:bg-gray-100"
-                      }`}
-                    >
-                      {category}
-                    </button>
+                      className="hidden"
+                    />
 
-                  )
+                    📷
+
+                    <span className="ml-2 truncate">
+                      {newCategoryImage
+                        ? newCategoryImage.name
+                        : "Kategori görseli seç"}
+                    </span>
+
+                  </label>
+
+                  <button
+                    type="button"
+                    onClick={addCategory}
+                    disabled={
+                      savingCategory
+                    }
+                    className="rounded-lg bg-[#061b3d] px-3 py-2 text-xs font-bold text-white transition hover:bg-[#0b2d62] disabled:cursor-not-allowed disabled:opacity-50 active:scale-95"
+                  >
+                    {savingCategory
+                      ? "⏳ Kaydediliyor..."
+                      : "➕ Kategori Ekle"}
+                  </button>
+
+                </div>
+
+                {newCategoryImage && (
+                  <p className="mt-2 rounded-lg bg-blue-50 p-2 text-[10px] font-semibold text-blue-700">
+                    📷 Görsel seçildi:
+                    {" "}
+                    {newCategoryImage.name}
+                  </p>
+                )}
+
+              </div>
+
+              {/* KATEGORİ KARTLARI */}
+
+              <div className="mt-3">
+
+                {categoryLoading ? (
+
+                  <div className="rounded-xl bg-gray-50 p-4 text-center text-xs text-gray-500">
+                    ⏳ Kategoriler yükleniyor...
+                  </div>
+
+                ) : categoryList.length === 0 ? (
+
+                  <div className="rounded-xl bg-gray-50 p-4 text-center text-xs text-gray-500">
+                    Henüz kategori bulunmuyor.
+                  </div>
+
+                ) : (
+
+                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+
+                    {categoryList.map(
+                      (category) => {
+
+                        const isEditing =
+                          editingCategoryId ===
+                          category.id;
+
+                        return (
+                          <div
+                            key={
+                              category.id
+                            }
+                            className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm"
+                          >
+
+                            {/* KATEGORİ GÖRSELİ */}
+
+                            <div className="relative h-20 bg-gray-100">
+
+                              {category.image ? (
+
+                                <img
+                                  src={
+                                    category.image
+                                  }
+                                  alt={
+                                    category.name
+                                  }
+                                  className="h-full w-full object-cover"
+                                />
+
+                              ) : (
+
+                                <div className="flex h-full items-center justify-center text-3xl">
+                                  📂
+                                </div>
+
+                              )}
+
+                              <div className="absolute left-1.5 top-1.5 rounded-full bg-black/60 px-1.5 py-0.5 text-[9px] font-bold text-white">
+                                #{category.id}
+                              </div>
+
+                            </div>
+
+                            <div className="p-2.5">
+
+                              {!isEditing ? (
+
+                                <>
+
+                                  <div className="flex items-start justify-between gap-2">
+
+                                    <div>
+
+                                      <h4 className="text-xs font-bold text-[#061b3d]">
+                                        {
+                                          category.name
+                                        }
+                                      </h4>
+
+                                      <p className="mt-0.5 text-[10px] text-gray-500">
+                                        {categoryProductCount(
+                                          category.name
+                                        )}{" "}
+                                        ürün
+                                      </p>
+
+                                    </div>
+
+                                  </div>
+
+                                  <div className="mt-2 flex gap-1.5">
+
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        startEditCategory(
+                                          category
+                                        )
+                                      }
+                                      className="flex-1 rounded-lg bg-[#061b3d] px-2 py-1.5 text-[10px] font-bold text-white transition hover:bg-[#0b2d62] active:scale-95"
+                                    >
+                                      ✏️ Düzenle
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        deleteCategory(
+                                          category
+                                        )
+                                      }
+                                      disabled={
+                                        deletingCategoryId ===
+                                        category.id
+                                      }
+                                      className="rounded-lg border border-red-500 bg-white px-2.5 py-1.5 text-[10px] font-bold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 active:scale-95"
+                                    >
+                                      {deletingCategoryId ===
+                                      category.id
+                                        ? "⏳"
+                                        : "🗑️"}
+                                    </button>
+
+                                  </div>
+
+                                </>
+
+                              ) : (
+
+                                <>
+
+                                  <label className="mb-1 block text-[10px] font-bold">
+                                    Kategori Adı
+                                  </label>
+
+                                  <input
+                                    type="text"
+                                    value={
+                                      editingCategoryName
+                                    }
+                                    onChange={(e) =>
+                                      setEditingCategoryName(
+                                        e.target.value
+                                      )
+                                    }
+                                    className="w-full rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs outline-none focus:border-[#061b3d] focus:ring-2 focus:ring-blue-100"
+                                  />
+
+                                  <label className="mt-2 flex cursor-pointer items-center rounded-lg border border-gray-300 bg-gray-50 px-2.5 py-1.5 text-[10px] font-semibold text-gray-700 transition hover:bg-gray-100">
+
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      onChange={
+                                        handleEditingCategoryImage
+                                      }
+                                      className="hidden"
+                                    />
+
+                                    📷
+
+                                    <span className="ml-2 truncate">
+                                      {editingCategoryImage
+                                        ? editingCategoryImage.name
+                                        : "Görseli değiştir"}
+                                    </span>
+
+                                  </label>
+
+                                  <div className="mt-2 flex gap-1.5">
+
+                                    <button
+                                      type="button"
+                                      onClick={
+                                        saveCategory
+                                      }
+                                      disabled={
+                                        savingCategory
+                                      }
+                                      className="flex-1 rounded-lg bg-green-600 px-2 py-1.5 text-[10px] font-bold text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50 active:scale-95"
+                                    >
+                                      {savingCategory
+                                        ? "⏳"
+                                        : "💾 Kaydet"}
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      onClick={
+                                        cancelEditCategory
+                                      }
+                                      disabled={
+                                        savingCategory
+                                      }
+                                      className="flex-1 rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-[10px] font-bold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                      İptal
+                                    </button>
+
+                                  </div>
+
+                                </>
+
+                              )}
+
+                            </div>
+
+                          </div>
+                        );
+                      }
+                    )}
+
+                  </div>
+
                 )}
 
               </div>
 
             </div>
+          )}
 
-            {/* YENİ KATEGORİ EKLE */}
+          {/* =================================================
+              MENÜYÜ DÜZENLE
+              ================================================= */}
 
-            <div className="mt-4 rounded-xl border border-dashed border-[#061b3d]/20 bg-gray-50 p-3">
+          {adminSection ===
+            "menu" && (
 
-              <h3 className="text-sm font-bold text-[#061b3d]">
-                ➕ Yeni Kategori Ekle
-              </h3>
+            <div className="mt-3 border-t border-gray-200 pt-3">
 
-              <div className="mt-2 grid gap-2 md:grid-cols-[1fr_1fr_auto]">
+              {selectedCategory ===
+              "Tümü" ? (
 
-                <input
-                  type="text"
-                  value={newCategoryName}
-                  onChange={(e) =>
-                    setNewCategoryName(
-                      e.target.value
-                    )
-                  }
-                  placeholder="Kategori adı"
-                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#061b3d] focus:ring-2 focus:ring-blue-100"
-                />
+                <>
 
-                <label className="flex cursor-pointer items-center rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-semibold text-gray-700 transition hover:bg-gray-50">
+                  <div className="flex items-center justify-between gap-2">
 
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={
-                      handleNewCategoryImage
-                    }
-                    className="hidden"
-                  />
+                    <div>
 
-                  📷{" "}
-                  <span className="ml-2 truncate">
-                    {newCategoryImage
-                      ? newCategoryImage.name
-                      : "Kategori görseli seç"}
-                  </span>
+                      <h2 className="text-sm font-bold text-[#061b3d]">
+                        🍽️ Menü Düzenleme
+                      </h2>
 
-                </label>
+                      <p className="mt-0.5 text-[10px] text-gray-500">
+                        Düzenlemek istediğiniz
+                        kategoriyi seçin.
+                      </p>
 
-                <button
-                  type="button"
-                  onClick={addCategory}
-                  disabled={
-                    savingCategory
-                  }
-                  className="rounded-lg bg-[#061b3d] px-3 py-2 text-sm font-bold text-white transition hover:bg-[#0b2d62] disabled:cursor-not-allowed disabled:opacity-50 active:scale-95"
-                >
-                  {savingCategory
-                    ? "⏳ Kaydediliyor..."
-                    : "➕ Kategori Ekle"}
-                </button>
+                    </div>
 
-              </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        fetchMenu();
+                        fetchCategories();
+                      }}
+                      className="rounded-lg bg-[#061b3d] px-3 py-1.5 text-[10px] font-bold text-white transition hover:bg-[#0b2d62] active:scale-95"
+                    >
+                      🔄 Yenile
+                    </button>
 
-              {newCategoryImage && (
-                <p className="mt-2 rounded-lg bg-blue-50 p-2 text-[11px] font-semibold text-blue-700">
-                  📷 Görsel seçildi:
-                  {" "}
-                  {newCategoryImage.name}
-                </p>
-              )}
+                  </div>
 
-            </div>
+                  {/* ARAMA */}
 
-            {/* KATEGORİ YÖNETİM KARTLARI */}
+                  <div className="mt-3">
 
-            <div className="mt-4">
+                    <input
+                      type="text"
+                      value={search}
+                      onChange={(e) =>
+                        setSearch(
+                          e.target.value
+                        )
+                      }
+                      placeholder="🔎 Ürün adı veya açıklama ara..."
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-xs outline-none focus:border-[#061b3d] focus:ring-2 focus:ring-blue-100"
+                    />
 
-              {categoryLoading ? (
+                  </div>
 
-                <div className="rounded-xl bg-gray-50 p-4 text-center text-sm text-gray-500">
-                  ⏳ Kategoriler yükleniyor...
-                </div>
+                  {/* KATEGORİLER */}
 
-              ) : categoryList.length === 0 ? (
+                  <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
 
-                <div className="rounded-xl bg-gray-50 p-4 text-center text-sm text-gray-500">
-                  Henüz kategori bulunmuyor.
-                </div>
+                    {availableCategories.map(
+                      (category) => (
+
+                        <button
+                          key={
+                            category
+                          }
+                          type="button"
+                          onClick={() =>
+                            setSelectedCategory(
+                              category
+                            )
+                          }
+                          className="rounded-xl border border-gray-200 bg-gray-50 p-2.5 text-left transition hover:border-[#061b3d] hover:bg-blue-50 active:scale-[0.98]"
+                        >
+
+                          <div className="flex items-center justify-between gap-2">
+
+                            <span className="text-xs font-bold text-[#061b3d]">
+                              {category}
+                            </span>
+
+                            <span className="rounded-full bg-[#061b3d] px-1.5 py-0.5 text-[9px] font-bold text-white">
+                              {categoryProductCount(
+                                category
+                              )}
+                            </span>
+
+                          </div>
+
+                          <p className="mt-1 text-[9px] text-gray-500">
+                            Ürünleri düzenle →
+                          </p>
+
+                        </button>
+
+                      )
+                    )}
+
+                  </div>
+
+                  {search && (
+                    <p className="mt-2 text-[10px] text-gray-500">
+                      Arama yalnızca ürün
+                      adlarını ve açıklamalarını
+                      kontrol eder.
+                    </p>
+                  )}
+
+                </>
 
               ) : (
 
-                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                <>
 
-                  {categoryList.map(
-                    (category) => {
+                  {/* KATEGORİ BAŞLIĞI */}
 
-                      const isEditing =
-                        editingCategoryId ===
-                        category.id;
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
 
-                      return (
-                        <div
-                          key={
-                            category.id
-                          }
-                          className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm"
-                        >
+                    <div className="flex items-center gap-2">
 
-                          {/* KATEGORİ GÖRSELİ */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedCategory(
+                            "Tümü"
+                          );
+                          setSearch("");
+                        }}
+                        className="rounded-lg bg-gray-100 px-2.5 py-1.5 text-xs font-bold text-gray-700 transition hover:bg-gray-200 active:scale-95"
+                      >
+                        ← Kategoriler
+                      </button>
 
-                          <div className="relative h-24 bg-gray-100">
+                      <div>
 
-                            {category.image ? (
+                        <h2 className="text-sm font-bold text-[#061b3d]">
+                          {selectedCategory}
+                        </h2>
 
-                              <img
-                                src={
-                                  category.image
-                                }
-                                alt={
-                                  category.name
-                                }
-                                className="h-full w-full object-cover"
-                              />
+                        <p className="text-[10px] text-gray-500">
+                          {
+                            categoryProductCount(
+                              selectedCategory
+                            )
+                          }{" "}
+                          ürün
+                        </p>
 
-                            ) : (
+                      </div>
 
-                              <div className="flex h-full items-center justify-center text-4xl">
-                                📂
-                              </div>
+                    </div>
 
-                            )}
+                    <div className="flex gap-1.5">
 
-                            <div className="absolute left-2 top-2 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-bold text-white">
-                              #{category.id}
-                            </div>
+                      <button
+                        type="button"
+                        onClick={addNewItem}
+                        className="rounded-lg bg-[#e8c866] px-3 py-1.5 text-[10px] font-bold text-[#061b3d] transition hover:bg-[#f1d477] active:scale-95"
+                      >
+                        ➕ Yeni Ürün
+                      </button>
 
-                          </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          fetchMenu();
+                          fetchCategories();
+                        }}
+                        className="rounded-lg bg-[#061b3d] px-3 py-1.5 text-[10px] font-bold text-white transition hover:bg-[#0b2d62] active:scale-95"
+                      >
+                        🔄
+                      </button>
 
-                          <div className="p-3">
+                    </div>
 
-                            {!isEditing ? (
+                  </div>
 
-                              <>
+                  {/* ARAMA */}
 
-                                <h4 className="text-sm font-bold text-[#061b3d]">
-                                  {
-                                    category.name
-                                  }
-                                </h4>
+                  <div className="mt-3">
 
-                                <p className="mt-0.5 text-[11px] text-gray-500">
-                                  {category.image
-                                    ? "Görsel mevcut"
-                                    : "Görsel eklenmemiş"}
-                                </p>
+                    <input
+                      type="text"
+                      value={search}
+                      onChange={(e) =>
+                        setSearch(
+                          e.target.value
+                        )
+                      }
+                      placeholder={`${selectedCategory} içinde ara...`}
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-xs outline-none focus:border-[#061b3d] focus:ring-2 focus:ring-blue-100"
+                    />
 
-                                <div className="mt-3 flex gap-1.5">
+                  </div>
 
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      startEditCategory(
-                                        category
-                                      )
-                                    }
-                                    className="flex-1 rounded-lg bg-[#061b3d] px-3 py-2 text-xs font-bold text-white transition hover:bg-[#0b2d62] active:scale-95"
-                                  >
-                                    ✏️ Düzenle
-                                  </button>
-
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      deleteCategory(
-                                        category
-                                      )
-                                    }
-                                    disabled={
-                                      deletingCategoryId ===
-                                      category.id
-                                    }
-                                    className="rounded-lg border border-red-500 bg-white px-3 py-2 text-xs font-bold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 active:scale-95"
-                                  >
-                                    {deletingCategoryId ===
-                                    category.id
-                                      ? "⏳"
-                                      : "🗑️"}
-                                  </button>
-
-                                </div>
-
-                              </>
-
-                            ) : (
-
-                              <>
-
-                                <label className="mb-1 block text-xs font-bold">
-                                  Kategori Adı
-                                </label>
-
-                                <input
-                                  type="text"
-                                  value={
-                                    editingCategoryName
-                                  }
-                                  onChange={(e) =>
-                                    setEditingCategoryName(
-                                      e.target.value
-                                    )
-                                  }
-                                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-[#061b3d] focus:ring-2 focus:ring-blue-100"
-                                />
-
-                                <label className="mt-2 flex cursor-pointer items-center rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-xs font-semibold text-gray-700 transition hover:bg-gray-100">
-
-                                  <input
-                                    type="file"
-                                    accept="image/*"
-                                    onChange={
-                                      handleEditingCategoryImage
-                                    }
-                                    className="hidden"
-                                  />
-
-                                  📷
-
-                                  <span className="ml-2 truncate">
-                                    {editingCategoryImage
-                                      ? editingCategoryImage.name
-                                      : "Görseli değiştir"}
-                                  </span>
-
-                                </label>
-
-                                {editingCategoryImage && (
-                                  <p className="mt-1 rounded-lg bg-blue-50 p-2 text-[11px] font-semibold text-blue-700">
-                                    Yeni görsel seçildi.
-                                    {" "}
-                                    Kaydettiğinizde
-                                    yüklenecek.
-                                  </p>
-                                )}
-
-                                <div className="mt-3 flex gap-1.5">
-
-                                  <button
-                                    type="button"
-                                    onClick={
-                                      saveCategory
-                                    }
-                                    disabled={
-                                      savingCategory
-                                    }
-                                    className="flex-1 rounded-lg bg-green-600 px-3 py-2 text-xs font-bold text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50 active:scale-95"
-                                  >
-                                    {savingCategory
-                                      ? "⏳ Kaydediliyor..."
-                                      : "💾 Kaydet"}
-                                  </button>
-
-                                  <button
-                                    type="button"
-                                    onClick={
-                                      cancelEditCategory
-                                    }
-                                    disabled={
-                                      savingCategory
-                                    }
-                                    className="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-bold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
-                                  >
-                                    İptal
-                                  </button>
-
-                                </div>
-
-                              </>
-
-                            )}
-
-                          </div>
-
-                        </div>
-                      );
-                    }
-                  )}
-
-                </div>
+                </>
 
               )}
 
             </div>
+          )}
 
-          </div>
+          {/* ALT BİLGİ / ÇIKIŞ */}
 
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+          <div className="mt-3 flex items-center justify-between border-t border-gray-200 pt-3">
 
-            <div className="text-xs text-gray-500">
-              {filteredItems.length} ürün gösteriliyor.
+            <div className="text-[10px] text-gray-500">
+              Toplam {items.length} ürün
             </div>
 
             <button
               type="button"
               onClick={handleLogout}
-              className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-bold text-white shadow transition hover:bg-red-700 active:scale-95"
+              className="rounded-lg bg-red-600 px-3 py-1.5 text-[10px] font-bold text-white shadow transition hover:bg-red-700 active:scale-95"
             >
               🚪 Çıkış Yap
             </button>
@@ -2206,438 +2425,466 @@ export default function YonetimPage() {
           ÜRÜNLER
           ===================================================== */}
 
-      <section className="mx-auto max-w-7xl px-4 py-4">
+      {adminSection === "menu" &&
+        selectedCategory !== "Tümü" && (
 
-        {loading ? (
+        <section className="mx-auto max-w-7xl px-4 py-3">
 
-          <div className="rounded-2xl bg-white p-8 text-center text-gray-700 shadow-xl">
+          {loading ? (
 
-            <div className="text-3xl">
-              ⏳
+            <div className="rounded-2xl bg-white p-8 text-center text-gray-700 shadow-xl">
+
+              <div className="text-3xl">
+                ⏳
+              </div>
+
+              <p className="mt-2 text-sm font-semibold">
+                Menü yükleniyor...
+              </p>
+
             </div>
 
-            <p className="mt-2 text-sm font-semibold">
-              Menü yükleniyor...
-            </p>
+          ) : selectedCategoryItems.length === 0 ? (
 
-          </div>
+            <div className="rounded-2xl bg-white p-8 text-center text-gray-700 shadow-xl">
 
-        ) : filteredItems.length === 0 ? (
+              <div className="text-4xl">
+                🍽️
+              </div>
 
-          <div className="rounded-2xl bg-white p-8 text-center text-gray-700 shadow-xl">
+              <h2 className="mt-2 text-base font-bold">
+                Bu kategoride ürün yok
+              </h2>
 
-            <div className="text-4xl">
-              🍽️
+              <p className="mt-1 text-xs text-gray-500">
+                Bu kategoriye yeni bir ürün
+                ekleyebilirsiniz.
+              </p>
+
+              <button
+                onClick={addNewItem}
+                className="mt-3 rounded-lg bg-[#061b3d] px-4 py-2 text-xs font-bold text-white"
+              >
+                ➕ Yeni Ürün Ekle
+              </button>
+
             </div>
 
-            <h2 className="mt-3 text-lg font-bold">
-              Ürün bulunamadı
-            </h2>
+          ) : (
 
-            <p className="mt-1 text-sm text-gray-500">
-              Arama veya kategori
-              filtresini değiştirmeyi
-              deneyin.
-            </p>
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
 
-            <button
-              onClick={addNewItem}
-              className="mt-4 rounded-lg bg-[#061b3d] px-4 py-2 text-sm font-bold text-white"
-            >
-              ➕ Yeni Ürün Ekle
-            </button>
+              {selectedCategoryItems.map(
+                (item) => (
 
-          </div>
-
-        ) : (
-
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-
-            {filteredItems.map(
-              (item) => (
-
-                <div
-                  key={item.id}
-                  className="overflow-hidden rounded-xl bg-white text-gray-900 shadow-md"
-                >
-
-                  {/* FOTOĞRAF */}
-
-                  <div className="relative h-28 bg-gray-100">
-
-                    {item.image ? (
-
-                      <img
-                        src={item.image}
-                        alt={
-                          item.name ||
-                          "Ürün"
-                        }
-                        className="h-full w-full object-cover"
-                      />
-
-                    ) : (
-
-                      <div className="flex h-full items-center justify-center text-5xl">
-                        🍽️
-                      </div>
-
-                    )}
-
-                    <div
-                      className={`absolute right-2 top-2 rounded-full px-2.5 py-1 text-[10px] font-bold shadow ${
-                        item.is_active
-                          ? "bg-green-600 text-white"
-                          : "bg-gray-700 text-white"
-                      }`}
-                    >
-                      {item.is_active
-                        ? "AKTİF"
-                        : "PASİF"}
-                    </div>
-
-                    {item.id < 0 && (
-
-                      <div className="absolute left-2 top-2 rounded-full bg-[#e8c866] px-2.5 py-1 text-[10px] font-bold text-[#061b3d] shadow">
-                        YENİ ÜRÜN
-                      </div>
-
-                    )}
-
-                  </div>
-
-                  {/* FORM */}
-
-                  <div className="p-4">
-
-                    {/* ID + AKTİF/PASİF */}
-
-                    <div className="mb-3 flex items-center justify-between gap-2">
-
-                      <div>
-
-                        <p className="text-[10px] font-semibold text-gray-400">
-                          {item.id < 0
-                            ? "DURUM"
-                            : "ÜRÜN ID"}
-                        </p>
-
-                        <p className="text-xs font-bold text-gray-700">
-                          {item.id < 0
-                            ? "Henüz kaydedilmedi"
-                            : `#${item.id}`}
-                        </p>
-
-                      </div>
-
-                      <button
-                        onClick={() =>
-                          updateItem(
-                            item.id,
-                            "is_active",
-                            !item.is_active
-                          )
-                        }
-                        className={`rounded-lg px-2.5 py-1.5 text-[10px] font-bold transition ${
-                          item.is_active
-                            ? "bg-red-100 text-red-700 hover:bg-red-200"
-                            : "bg-green-100 text-green-700 hover:bg-green-200"
-                        }`}
-                      >
-                        {item.is_active
-                          ? "Pasif Yap"
-                          : "Aktif Yap"}
-                      </button>
-
-                    </div>
-
-                    {/* ÜRÜN ADI */}
-
-                    <div className="mb-3">
-
-                      <label className="mb-1 block text-xs font-bold">
-                        Ürün Adı
-                      </label>
-
-                      <input
-                        type="text"
-                        value={
-                          item.name
-                        }
-                        onChange={(e) =>
-                          updateItem(
-                            item.id,
-                            "name",
-                            e.target.value
-                          )
-                        }
-                        placeholder="Örn: Adana Kebap"
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-[#061b3d] focus:ring-2 focus:ring-blue-100"
-                      />
-
-                    </div>
-
-                    {/* AÇIKLAMA */}
-
-                    <div className="mb-3">
-
-                      <label className="mb-1 block text-xs font-bold">
-                        Açıklama
-                      </label>
-
-                      <textarea
-                        value={
-                          item.description ||
-                          ""
-                        }
-                        onChange={(e) =>
-                          updateItem(
-                            item.id,
-                            "description",
-                            e.target.value
-                          )
-                        }
-                        rows={2}
-                        placeholder="Ürün açıklaması..."
-                        className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-[#061b3d] focus:ring-2 focus:ring-blue-100"
-                      />
-
-                    </div>
-
-                    {/* FİYAT + KATEGORİ */}
-
-                    <div className="grid gap-2 sm:grid-cols-2">
-
-                      <div>
-
-                        <label className="mb-1 block text-xs font-bold">
-                          Fiyat (TL)
-                        </label>
-
-                        <input
-                          type="number"
-                          min="0"
-                          value={
-                            item.price
-                          }
-                          onChange={(e) =>
-                            updateItem(
-                              item.id,
-                              "price",
-                              Number(
-                                e.target
-                                  .value
-                              )
-                            )
-                          }
-                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-[#061b3d] focus:ring-2 focus:ring-blue-100"
-                        />
-
-                      </div>
-
-                      <div>
-
-                        <label className="mb-1 block text-xs font-bold">
-                          Kategori
-                        </label>
-
-                        <select
-                          value={
-                            item.category
-                          }
-                          onChange={(e) =>
-                            updateItem(
-                              item.id,
-                              "category",
-                              e.target.value
-                            )
-                          }
-                          className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#061b3d] focus:ring-2 focus:ring-blue-100"
-                        >
-
-                          {!availableCategories.includes(
-                            item.category
-                          ) &&
-                            item.category && (
-                              <option
-                                value={
-                                  item.category
-                                }
-                              >
-                                {
-                                  item.category
-                                }
-                              </option>
-                            )}
-
-                          {availableCategories.map(
-                            (
-                              category
-                            ) => (
-
-                              <option
-                                key={
-                                  category
-                                }
-                                value={
-                                  category
-                                }
-                              >
-                                {
-                                  category
-                                }
-                              </option>
-
-                            )
-                          )}
-
-                        </select>
-
-                      </div>
-
-                    </div>
+                  <div
+                    key={item.id}
+                    className="overflow-hidden rounded-xl bg-white text-gray-900 shadow-md"
+                  >
 
                     {/* FOTOĞRAF */}
 
-                    <div className="mt-3 rounded-xl border border-dashed border-gray-300 bg-gray-50 p-3">
+                    <div className="relative h-24 bg-gray-100">
 
-                      <label className="mb-1 block text-xs font-bold text-gray-900">
-                        📷 Menü Fotoğrafı
-                      </label>
+                      {item.image ? (
 
-                      <p className="mb-2 text-[11px] text-gray-500">
-                        Bilgisayarınızdan ürün
-                        fotoğrafı seçin.
-                        En fazla 10 MB.
-                      </p>
+                        <img
+                          src={item.image}
+                          alt={
+                            item.name ||
+                            "Ürün"
+                          }
+                          className="h-full w-full object-cover"
+                        />
 
-                      <input
-                        ref={(element) => {
-                          fileInputRefs.current[
-                            item.id
-                          ] =
-                            element;
-                        }}
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) =>
-                          handleFileChange(
-                            item,
-                            e
-                          )
-                        }
-                        className="hidden"
-                      />
+                      ) : (
 
-                      <button
-                        type="button"
-                        disabled={
-                          uploadingId ===
-                          item.id
-                        }
-                        onClick={() =>
-                          fileInputRefs.current[
-                            item.id
-                          ]?.click()
-                        }
-                        className="w-full rounded-lg bg-[#061b3d] px-3 py-2 text-xs font-bold text-white transition hover:bg-[#0b2d62] disabled:cursor-not-allowed disabled:opacity-60 active:scale-95"
+                        <div className="flex h-full items-center justify-center text-4xl">
+                          🍽️
+                        </div>
+
+                      )}
+
+                      <div
+                        className={`absolute right-1.5 top-1.5 rounded-full px-2 py-0.5 text-[9px] font-bold shadow ${
+                          item.is_active
+                            ? "bg-green-600 text-white"
+                            : "bg-gray-700 text-white"
+                        }`}
                       >
-                        {uploadingId ===
-                        item.id
-                          ? "⏳ Fotoğraf Yükleniyor..."
-                          : "📷 Bilgisayardan Fotoğraf Seç"}
-                      </button>
+                        {item.is_active
+                          ? "AKTİF"
+                          : "PASİF"}
+                      </div>
 
-                      {pendingFiles.current[
-                        item.id
-                      ] && (
+                      {item.id < 0 && (
 
-                        <p className="mt-2 rounded-lg bg-blue-50 p-2 text-[11px] font-semibold text-blue-700">
-                          📷 Yeni fotoğraf
-                          seçildi.
-                          <br />
-                          Kaydet
-                          butonuna
-                          basınca
-                          yüklenecek.
-                        </p>
+                        <div className="absolute left-1.5 top-1.5 rounded-full bg-[#e8c866] px-2 py-0.5 text-[9px] font-bold text-[#061b3d] shadow">
+                          YENİ
+                        </div>
 
                       )}
 
                     </div>
 
-                    {/* KAYDET */}
+                    {/* FORM */}
 
-                    <button
-                      onClick={() =>
-                        saveItem(
-                          item
-                        )
-                      }
-                      disabled={
-                        savingId ===
-                          item.id ||
-                        uploadingId ===
-                          item.id ||
-                        deletingId ===
+                    <div className="p-3">
+
+                      {/* ID + AKTİF/PASİF */}
+
+                      <div className="mb-2 flex items-center justify-between gap-2">
+
+                        <div>
+
+                          <p className="text-[9px] font-semibold text-gray-400">
+                            {item.id < 0
+                              ? "DURUM"
+                              : "ÜRÜN ID"}
+                          </p>
+
+                          <p className="text-[10px] font-bold text-gray-700">
+                            {item.id < 0
+                              ? "Yeni ürün"
+                              : `#${item.id}`}
+                          </p>
+
+                        </div>
+
+                        <button
+                          onClick={() =>
+                            updateItem(
+                              item.id,
+                              "is_active",
+                              !item.is_active
+                            )
+                          }
+                          className={`rounded-lg px-2 py-1 text-[9px] font-bold transition ${
+                            item.is_active
+                              ? "bg-red-100 text-red-700 hover:bg-red-200"
+                              : "bg-green-100 text-green-700 hover:bg-green-200"
+                          }`}
+                        >
+                          {item.is_active
+                            ? "Pasif Yap"
+                            : "Aktif Yap"}
+                        </button>
+
+                      </div>
+
+                      {/* ÜRÜN ADI */}
+
+                      <div className="mb-2">
+
+                        <label className="mb-1 block text-[10px] font-bold">
+                          Ürün Adı
+                        </label>
+
+                        <input
+                          type="text"
+                          value={
+                            item.name
+                          }
+                          onChange={(e) =>
+                            updateItem(
+                              item.id,
+                              "name",
+                              e.target.value
+                            )
+                          }
+                          placeholder="Örn: Adana Kebap"
+                          className="w-full rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs outline-none focus:border-[#061b3d] focus:ring-2 focus:ring-blue-100"
+                        />
+
+                      </div>
+
+                      {/* AÇIKLAMA */}
+
+                      <div className="mb-2">
+
+                        <label className="mb-1 block text-[10px] font-bold">
+                          Açıklama
+                        </label>
+
+                        <textarea
+                          value={
+                            item.description ||
+                            ""
+                          }
+                          onChange={(e) =>
+                            updateItem(
+                              item.id,
+                              "description",
+                              e.target.value
+                            )
+                          }
+                          rows={2}
+                          placeholder="Ürün açıklaması..."
+                          className="w-full resize-none rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs outline-none focus:border-[#061b3d] focus:ring-2 focus:ring-blue-100"
+                        />
+
+                      </div>
+
+                      {/* FİYAT + KATEGORİ */}
+
+                      <div className="grid gap-2 sm:grid-cols-2">
+
+                        <div>
+
+                          <label className="mb-1 block text-[10px] font-bold">
+                            Fiyat (TL)
+                          </label>
+
+                          <input
+                            type="number"
+                            min="0"
+                            value={
+                              item.price
+                            }
+                            onChange={(e) =>
+                              updateItem(
+                                item.id,
+                                "price",
+                                Number(
+                                  e.target
+                                    .value
+                                )
+                              )
+                            }
+                            className="w-full rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs outline-none focus:border-[#061b3d] focus:ring-2 focus:ring-blue-100"
+                          />
+
+                        </div>
+
+                        <div>
+
+                          <label className="mb-1 block text-[10px] font-bold">
+                            Kategori
+                          </label>
+
+                          <select
+                            value={
+                              item.category
+                            }
+                            onChange={(e) =>
+                              updateItem(
+                                item.id,
+                                "category",
+                                e.target.value
+                              )
+                            }
+                            className="w-full rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs outline-none focus:border-[#061b3d] focus:ring-2 focus:ring-blue-100"
+                          >
+
+                            {!availableCategories.includes(
+                              item.category
+                            ) &&
+                              item.category && (
+                                <option
+                                  value={
+                                    item.category
+                                  }
+                                >
+                                  {
+                                    item.category
+                                  }
+                                </option>
+                              )}
+
+                            {availableCategories.map(
+                              (
+                                category
+                              ) => (
+
+                                <option
+                                  key={
+                                    category
+                                  }
+                                  value={
+                                    category
+                                  }
+                                >
+                                  {
+                                    category
+                                  }
+                                </option>
+
+                              )
+                            )}
+
+                          </select>
+
+                        </div>
+
+                      </div>
+
+                      {/* FOTOĞRAF */}
+
+                      <div className="mt-2 rounded-lg border border-dashed border-gray-300 bg-gray-50 p-2">
+
+                        <label className="mb-1 block text-[10px] font-bold text-gray-900">
+                          📷 Menü Fotoğrafı
+                        </label>
+
+                        <p className="mb-1.5 text-[9px] text-gray-500">
+                          En fazla 10 MB.
+                        </p>
+
+                        <input
+                          ref={(element) => {
+                            fileInputRefs.current[
+                              item.id
+                            ] =
+                              element;
+                          }}
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) =>
+                            handleFileChange(
+                              item,
+                              e
+                            )
+                          }
+                          className="hidden"
+                        />
+
+                        <button
+                          type="button"
+                          disabled={
+                            uploadingId ===
+                            item.id
+                          }
+                          onClick={() =>
+                            fileInputRefs.current[
+                              item.id
+                            ]?.click()
+                          }
+                          className="w-full rounded-lg bg-[#061b3d] px-2.5 py-1.5 text-[10px] font-bold text-white transition hover:bg-[#0b2d62] disabled:cursor-not-allowed disabled:opacity-60 active:scale-95"
+                        >
+                          {uploadingId ===
                           item.id
-                      }
-                      className="mt-3 w-full rounded-lg bg-green-600 py-2.5 text-sm font-bold text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60 active:scale-[0.99]"
-                    >
-                      {savingId ===
-                      item.id
-                        ? "⏳ Kaydediliyor..."
-                        : "💾 Kaydet"}
-                    </button>
+                            ? "⏳ Yükleniyor..."
+                            : "📷 Fotoğraf Seç"}
+                        </button>
 
-                    {/* SİL */}
-
-                    <button
-                      onClick={() =>
-                        deleteItem(
-                          item
-                        )
-                      }
-                      disabled={
-                        savingId ===
-                          item.id ||
-                        uploadingId ===
-                          item.id ||
-                        deletingId ===
+                        {pendingFiles.current[
                           item.id
-                      }
-                      className="mt-2 w-full rounded-lg border border-red-500 bg-white py-2 text-xs font-bold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.99]"
-                    >
-                      {deletingId ===
-                      item.id
-                        ? "⏳ Siliniyor..."
-                        : "🗑️ Ürünü Sil"}
-                    </button>
+                        ] && (
+
+                          <p className="mt-1.5 rounded-lg bg-blue-50 p-1.5 text-[9px] font-semibold text-blue-700">
+                            📷 Yeni fotoğraf
+                            seçildi.
+                            Kaydet'e basınca
+                            yüklenecek.
+                          </p>
+
+                        )}
+
+                      </div>
+
+                      {/* KAYDET */}
+
+                      <button
+                        onClick={() =>
+                          saveItem(
+                            item
+                          )
+                        }
+                        disabled={
+                          savingId ===
+                            item.id ||
+                          uploadingId ===
+                            item.id ||
+                          deletingId ===
+                            item.id
+                        }
+                        className="mt-2 w-full rounded-lg bg-green-600 py-2 text-xs font-bold text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60 active:scale-[0.99]"
+                      >
+                        {savingId ===
+                        item.id
+                          ? "⏳ Kaydediliyor..."
+                          : "💾 Kaydet"}
+                      </button>
+
+                      {/* SİL */}
+
+                      <button
+                        onClick={() =>
+                          deleteItem(
+                            item
+                          )
+                        }
+                        disabled={
+                          savingId ===
+                            item.id ||
+                          uploadingId ===
+                            item.id ||
+                          deletingId ===
+                            item.id
+                        }
+                        className="mt-1.5 w-full rounded-lg border border-red-500 bg-white py-1.5 text-[10px] font-bold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.99]"
+                      >
+                        {deletingId ===
+                        item.id
+                          ? "⏳ Siliniyor..."
+                          : "🗑️ Ürünü Sil"}
+                      </button>
+
+                    </div>
 
                   </div>
 
-                </div>
+                )
+              )}
 
-              )
-            )}
+            </div>
+
+          )}
+
+        </section>
+      )}
+
+      {/* =====================================================
+          MENÜDE KATEGORİ SEÇİLMEDİ
+          ===================================================== */}
+
+      {adminSection === "menu" &&
+        selectedCategory === "Tümü" && (
+
+        <section className="mx-auto max-w-7xl px-4 py-3">
+
+          <div className="rounded-2xl bg-white p-6 text-center text-gray-700 shadow-xl">
+
+            <div className="text-3xl">
+              📂
+            </div>
+
+            <h2 className="mt-2 text-sm font-bold">
+              Bir kategori seçin
+            </h2>
+
+            <p className="mt-1 text-[11px] text-gray-500">
+              Ürünleri görmek ve düzenlemek için
+              yukarıdaki kategorilerden birine
+              tıklayın.
+            </p>
 
           </div>
 
-        )}
-
-      </section>
+        </section>
+      )}
 
       {/* =====================================================
           FOOTER
           ===================================================== */}
 
-      <footer className="mt-6 border-t border-white/10 px-4 py-5 text-center">
+      <footer className="mt-4 border-t border-white/10 px-4 py-4 text-center">
 
-        <p className="text-sm font-semibold text-[#e8c866]">
+        <p className="text-xs font-semibold text-[#e8c866]">
           EDREMİT SOSYAL TESİS MÜDÜRLÜĞÜ
         </p>
 
-        <p className="mt-1 text-xs text-gray-500">
+        <p className="mt-0.5 text-[10px] text-gray-500">
           Menü Yönetim Paneli
         </p>
 
