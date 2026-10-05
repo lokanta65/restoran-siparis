@@ -2668,13 +2668,13 @@ export default function YonetimPage() {
                       {item.image ? (
 
                         <img
-                          src={item.image}
-                          alt={
-                            item.name ||
-                            "Ürün"
-                          }
-                          className="h-full w-full object-cover"
-                        />
+  src={item.image}
+  alt={
+    item.name ||
+    "Ürün"
+  }
+  className="h-full w-full object-contain p-1"
+/>
 
                       ) : (
 
