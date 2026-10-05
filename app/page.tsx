@@ -1631,15 +1631,11 @@ function MenuPage() {
                               <div className="relative h-48 overflow-hidden">
 
                                 <img
-                                  src={getProductImage(
-                                    item
-                                  )}
-                                  alt={
-                                    item.name
-                                  }
-                                  loading="lazy"
-                                  className="h-full w-full object-cover transition duration-300 hover:scale-105"
-                                />
+  src={getProductImage(item)}
+  alt={item.name}
+  loading="lazy"
+  className="h-full w-full object-contain bg-gray-100 p-2 transition duration-300 hover:scale-105"
+/>
 
                                 <div className="absolute left-3 top-3 rounded-full bg-[#061b3d]/90 px-3 py-1 text-xs font-semibold text-[#e8c866]">
                                   {
