@@ -25,17 +25,18 @@ type Order = {
 export default function GarsonPage() {
   const [isAdmin, setIsAdmin] = useState(false);
 
-useEffect(() => {
-  fetch("/api/me")
-    .then((response) => response.json())
-    .then((data) => {
-      setIsAdmin(data.role === "admin");
-    })
-    .catch(() => {
-      setIsAdmin(false);
-    });
-}, []);
-    const handleLogout = async () => {
+  useEffect(() => {
+    fetch("/api/me")
+      .then((response) => response.json())
+      .then((data) => {
+        setIsAdmin(data.role === "admin");
+      })
+      .catch(() => {
+        setIsAdmin(false);
+      });
+  }, []);
+
+  const handleLogout = async () => {
     try {
       await fetch("/api/logout", {
         method: "POST",
@@ -46,6 +47,7 @@ useEffect(() => {
 
     window.location.href = "/giris";
   };
+
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTable, setSelectedTable] = useState<number | null>(null);
@@ -56,7 +58,6 @@ useEffect(() => {
         .from("orders")
         .select("*")
         .eq("is_closed", false)
-        .neq("status", "teslim edildi")
         .neq("status", "iptal edildi")
         .order("created_at", { ascending: false });
 
@@ -90,7 +91,6 @@ useEffect(() => {
 
             if (
               newOrder.is_closed ||
-              newOrder.status === "teslim edildi" ||
               newOrder.status === "iptal edildi"
             ) {
               return;
@@ -114,7 +114,6 @@ useEffect(() => {
 
             if (
               updatedOrder.is_closed ||
-              updatedOrder.status === "teslim edildi" ||
               updatedOrder.status === "iptal edildi"
             ) {
               setOrders((currentOrders) =>
@@ -159,90 +158,6 @@ useEffect(() => {
     orderId: number,
     newStatus: string
   ) => {
-    // =====================================================
-    // TESLİM EDİLDİ → SİPARİŞİ SUPABASE'DEN TAMAMEN SİL
-    // =====================================================
-
-    if (newStatus === "teslim edildi") {
-      const confirmed = window.confirm(
-        "Bu sipariş teslim edildi olarak işaretlenecek ve sistemden tamamen silinecek. Devam etmek istiyor musunuz?"
-      );
-
-      if (!confirmed) {
-        return;
-      }
-
-      console.log(
-        "TESLİM EDİLDİ - SİPARİŞ SİLİNİYOR. ID:",
-        orderId
-      );
-
-      const { data: deletedData, error } = await supabase
-        .from("orders")
-        .delete()
-        .eq("id", orderId)
-        .select("id");
-
-      console.log("DELETE SONUCU:", {
-        orderId,
-        deletedData,
-        error,
-      });
-
-      // Supabase hata verdi
-      if (error) {
-        console.error(
-          "Sipariş silinemedi:",
-          error
-        );
-
-        alert(
-          `Sipariş silinemedi.\n\nSupabase hatası:\n${error.message}`
-        );
-
-        return;
-      }
-
-      // Hiçbir kayıt silinmediyse
-      if (!deletedData || deletedData.length === 0) {
-        console.error(
-          "DELETE işlemi 0 kayıt döndürdü.",
-          {
-            orderId,
-            deletedData,
-          }
-        );
-
-        alert(
-          `Sipariş #${orderId} Supabase'den silinemedi.\n\nDELETE işlemi herhangi bir kayıt döndürmedi.`
-        );
-
-        return;
-      }
-
-      // Garson ekranından kaldır
-      setOrders((currentOrders) =>
-        currentOrders.filter(
-          (order) => order.id !== orderId
-        )
-      );
-
-      console.log(
-        "SİPARİŞ BAŞARIYLA SİLİNDİ. ID:",
-        orderId
-      );
-
-      alert(
-        `Sipariş #${orderId} teslim edildi ve sistemden tamamen silindi.`
-      );
-
-      return;
-    }
-
-    // =====================================================
-    // DİĞER DURUMLAR
-    // =====================================================
-
     const { data, error } = await supabase
       .from("orders")
       .update({
@@ -278,18 +193,19 @@ useEffect(() => {
 
   const closeTable = async (tableNumber: number) => {
     const confirmed = window.confirm(
-      `Masa ${tableNumber} hesabını kapatmak istediğinize emin misiniz?`
+      `Masa ${tableNumber} hesabını kapatmak istediğinize emin misiniz?\n\nBu işlem masaya ait siparişleri sistemden tamamen silecektir.`
     );
 
     if (!confirmed) {
       return;
     }
 
-    const { error } = await supabase
+    const { data: deletedData, error } = await supabase
       .from("orders")
-      .update({ is_closed: true })
+      .delete()
       .eq("table_number", tableNumber)
-      .eq("is_closed", false);
+      .eq("is_closed", false)
+      .select("id");
 
     if (error) {
       console.error(
@@ -314,7 +230,9 @@ useEffect(() => {
     setSelectedTable(null);
 
     alert(
-      `Masa ${tableNumber} hesabı kapatıldı.`
+      `Masa ${tableNumber} hesabı kapatıldı.\n\n${
+        deletedData?.length || 0
+      } sipariş sistemden tamamen silindi.`
     );
   };
 
@@ -397,23 +315,25 @@ useEffect(() => {
               </p>
             </div>
 
-       {isAdmin && (
-  <button
-    type="button"
-    onClick={() => {
-      window.location.href = "/yonetim";
-    }}
-    className="inline-flex w-fit items-center justify-center rounded-xl bg-white px-5 py-3 font-bold text-red-700 shadow transition hover:bg-gray-100 active:scale-95"
-  >
-    ⚙️ Yönetim Paneline Dön
-  </button>
-)}     
-<button
-  onClick={handleLogout}
-  className="inline-flex w-fit items-center justify-center rounded-xl bg-black px-5 py-3 font-bold text-white shadow transition hover:bg-gray-900 active:scale-95"
->
-  🚪 Çıkış Yap
-</button>
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={() => {
+                  window.location.href = "/yonetim";
+                }}
+                className="inline-flex w-fit items-center justify-center rounded-xl bg-white px-5 py-3 font-bold text-red-700 shadow transition hover:bg-gray-100 active:scale-95"
+              >
+                ⚙️ Yönetim Paneline Dön
+              </button>
+            )}
+
+            <button
+              onClick={handleLogout}
+              className="inline-flex w-fit items-center justify-center rounded-xl bg-black px-5 py-3 font-bold text-white shadow transition hover:bg-gray-900 active:scale-95"
+            >
+              🚪 Çıkış Yap
+            </button>
+
           </div>
 
           <div className="mt-4 flex flex-wrap gap-2">
@@ -850,8 +770,8 @@ useEffect(() => {
 
                           </div>
 
-                          {order.status !==
-                            "iptal edildi" && (
+                          {order.status !== "iptal edildi" &&
+                            order.status !== "teslim edildi" && (
 
                             <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
 
