@@ -82,6 +82,8 @@ function MenuPage() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [specialRequest, setSpecialRequest] = useState("");
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [orderSuccessMessage, setOrderSuccessMessage] =
+  useState(false);
 
   /*
    * ÖNEMLİ:
@@ -881,9 +883,7 @@ function MenuPage() {
       );
     }
 
-    alert(
-      "Siparişiniz başarıyla gönderildi!"
-    );
+    setOrderSuccessMessage(true);
 
     setCart([]);
     setSpecialRequest("");
@@ -1103,6 +1103,24 @@ function MenuPage() {
 
   return (
     <main className="min-h-screen bg-[#061b3d] pb-10 text-white">
+    {orderSuccessMessage && (
+  <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 px-4">
+    <div className="w-full max-w-sm rounded-3xl bg-white p-7 text-center text-gray-900 shadow-2xl">
+      <div className="text-5xl">✅</div>
+
+      <p className="mt-4 text-xl font-bold">
+        Siparişiniz başarıyla gönderildi
+      </p>
+
+      <button
+        onClick={() => setOrderSuccessMessage(false)}
+        className="mt-5 w-full rounded-xl bg-[#061b3d] py-3 font-bold text-white transition hover:bg-[#0b2d62] active:scale-95"
+      >
+        Tamam
+      </button>
+    </div>
+  </div>
+)}
 
       {/* =====================================================
           ÜST ALAN
