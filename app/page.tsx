@@ -181,11 +181,17 @@ function MenuPage() {
        */
 
       const {
-        data: categoryData,
-        error: categoryError,
-      } = await supabase
-        .from("menu_categories")
-        .select("name,image");
+  data: categoryData,
+  error: categoryError,
+} = await supabase
+  .from("menu_categories")
+  .select("id,name,image,sort_order")
+  .order("sort_order", {
+    ascending: true,
+  })
+  .order("id", {
+    ascending: true,
+  });
 
       if (categoryError) {
         console.error(
