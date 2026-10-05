@@ -23,6 +23,7 @@ type Category = {
   id: number;
   name: string;
   image: string;
+  sort_order: number;
 };
 
 const fallbackCategories = [
@@ -105,6 +106,9 @@ export default function YonetimPage() {
     useState(false);
 
   const [deletingCategoryId, setDeletingCategoryId] =
+    useState<number | null>(null);
+
+  const [movingCategoryId, setMovingCategoryId] =
     useState<number | null>(null);
 
   /* =========================================================
@@ -250,7 +254,10 @@ export default function YonetimPage() {
 
     const { data, error } = await supabase
       .from("menu_categories")
-      .select("id,name,image")
+      .select("id,name,image,sort_order")
+      .order("sort_order", {
+        ascending: true,
+      })
       .order("id", {
         ascending: true,
       });
@@ -274,10 +281,110 @@ export default function YonetimPage() {
         id: Number(category.id),
         name: category.name || "",
         image: category.image || "",
+        sort_order: Number(
+          category.sort_order ?? category.id
+        ),
       }))
     );
 
     setCategoryLoading(false);
+  };
+
+  /* =========================================================
+     KATEGORİ SIRASINI DEĞİŞTİR
+     ========================================================= */
+
+  const moveCategory = async (
+    categoryId: number,
+    direction: "up" | "down"
+  ) => {
+    const currentIndex =
+      categoryList.findIndex(
+        (category) =>
+          category.id === categoryId
+      );
+
+    if (currentIndex === -1) {
+      return;
+    }
+
+    const targetIndex =
+      direction === "up"
+        ? currentIndex - 1
+        : currentIndex + 1;
+
+    if (
+      targetIndex < 0 ||
+      targetIndex >= categoryList.length
+    ) {
+      return;
+    }
+
+    const currentCategory =
+      categoryList[currentIndex];
+
+    const targetCategory =
+      categoryList[targetIndex];
+
+    setMovingCategoryId(categoryId);
+
+    try {
+      const currentSortOrder =
+        currentCategory.sort_order;
+
+      const targetSortOrder =
+        targetCategory.sort_order;
+
+      const { error: currentError } =
+        await supabase
+          .from("menu_categories")
+          .update({
+            sort_order:
+              targetSortOrder,
+          })
+          .eq(
+            "id",
+            currentCategory.id
+          );
+
+      if (currentError) {
+        throw currentError;
+      }
+
+      const { error: targetError } =
+        await supabase
+          .from("menu_categories")
+          .update({
+            sort_order:
+              currentSortOrder,
+          })
+          .eq(
+            "id",
+            targetCategory.id
+          );
+
+      if (targetError) {
+        throw targetError;
+      }
+
+      await fetchCategories();
+    } catch (error: any) {
+      console.error(
+        "Kategori sıralama hatası:",
+        error
+      );
+
+      alert(
+        `Kategori sırası değiştirilemedi.\n\n${
+          error?.message ||
+          "Bilinmeyen hata"
+        }`
+      );
+
+      await fetchCategories();
+    } finally {
+      setMovingCategoryId(null);
+    }
   };
 
   /* =========================================================
@@ -498,12 +605,26 @@ export default function YonetimPage() {
           );
       }
 
+      const maxSortOrder =
+        categoryList.length > 0
+          ? Math.max(
+              ...categoryList.map(
+                (category) =>
+                  Number(
+                    category.sort_order
+                  ) || 0
+              )
+            )
+          : 0;
+
       const { error } =
         await supabase
           .from("menu_categories")
           .insert({
             name,
             image: imageUrl,
+            sort_order:
+              maxSortOrder + 1,
           });
 
       if (error) {
@@ -1990,10 +2111,14 @@ export default function YonetimPage() {
                   <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
 
                     {categoryList.map(
-                      (category) => {
+                      (category, categoryIndex) => {
 
                         const isEditing =
                           editingCategoryId ===
+                          category.id;
+
+                        const isMoving =
+                          movingCategoryId ===
                           category.id;
 
                         return (
@@ -2029,7 +2154,7 @@ export default function YonetimPage() {
                               )}
 
                               <div className="absolute left-1.5 top-1.5 rounded-full bg-black/60 px-1.5 py-0.5 text-[9px] font-bold text-white">
-                                #{category.id}
+                                #{categoryIndex + 1}
                               </div>
 
                             </div>
@@ -2042,7 +2167,7 @@ export default function YonetimPage() {
 
                                   <div className="flex items-start justify-between gap-2">
 
-                                    <div>
+                                    <div className="min-w-0">
 
                                       <h4 className="text-xs font-bold text-[#061b3d]">
                                         {
@@ -2059,7 +2184,61 @@ export default function YonetimPage() {
 
                                     </div>
 
+                                    {/* SIRALAMA BUTONLARI */}
+
+                                    <div className="flex shrink-0 gap-1">
+
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          moveCategory(
+                                            category.id,
+                                            "up"
+                                          )
+                                        }
+                                        disabled={
+                                          categoryIndex ===
+                                            0 ||
+                                          movingCategoryId !==
+                                            null
+                                        }
+                                        title="Yukarı taşı"
+                                        className="flex h-7 w-7 items-center justify-center rounded-lg border border-gray-300 bg-white text-sm font-bold text-gray-700 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30 active:scale-95"
+                                      >
+                                        ↑
+                                      </button>
+
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          moveCategory(
+                                            category.id,
+                                            "down"
+                                          )
+                                        }
+                                        disabled={
+                                          categoryIndex ===
+                                            categoryList.length -
+                                              1 ||
+                                          movingCategoryId !==
+                                            null
+                                        }
+                                        title="Aşağı taşı"
+                                        className="flex h-7 w-7 items-center justify-center rounded-lg border border-gray-300 bg-white text-sm font-bold text-gray-700 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30 active:scale-95"
+                                      >
+                                        ↓
+                                      </button>
+
+                                    </div>
+
                                   </div>
+
+                                  {isMoving && (
+                                    <p className="mt-1 text-[9px] font-semibold text-blue-600">
+                                      ⏳ Sıra
+                                      değiştiriliyor...
+                                    </p>
+                                  )}
 
                                   <div className="mt-2 flex gap-1.5">
 
@@ -2165,7 +2344,7 @@ export default function YonetimPage() {
                                       disabled={
                                         savingCategory
                                       }
-                                      className="flex-1 rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-[10px] font-bold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                      className="flex-1 rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-[10px] font-bold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 active:scale-95"
                                     >
                                       İptal
                                     </button>
