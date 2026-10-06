@@ -577,92 +577,62 @@ console.log("dailyError:", dailyError);
      GÜNLÜK ÜRÜN DETAYINI GETİR
      ========================================================= */
 
-  const fetchDailyProductReport = async (
-    reportDate: string
-  ) => {
-    setDailyDetailLoading(true);
+  const fetchDailyProductReport = async (reportDate: string) => {
+  setDailyDetailLoading(true);
 
-    try {
-      const {
-        data,
-        error,
-      } = await supabase
-        .from("daily_product_report")
-        .select("*")
-        .eq(
-          "report_date",
-          reportDate
-        )
-        .order("quantity", {
-          ascending: false,
-        });
+  try {
+    const { data, error } = await supabase
+      .from("daily_product_report")
+      .select("id, report_date, product_name, quantity, revenue")
+      .eq("report_date", reportDate)
+      .order("quantity", { ascending: false });
 
-      if (error) {
-        throw error;
-      }
-
-      setDailyProductReports(
-        (data || []).map(
-          (product: any) => ({
-            id: Number(product.id),
-            report_date:
-              product.report_date,
-            product_name:
-              product.product_name || "",
-            quantity:
-              Number(
-                product.quantity
-              ) || 0,
-            revenue:
-              Number(
-                product.revenue
-              ) || 0,
-          })
-        )
-      );
-    } catch (error: any) {
-      console.error(
-        "Günlük ürün raporu alınamadı:",
-        error
-      );
-
-      alert(
-        `Günlük ürün raporu alınamadı.\n\n${
-          error?.message ||
-          "Bilinmeyen hata"
-        }`
-      );
-
-      setDailyProductReports([]);
-    } finally {
-      setDailyDetailLoading(false);
+    if (error) {
+      throw error;
     }
-  };
+
+    const products: DailyProductReport[] = (data || []).map((product: any) => ({
+      id: Number(product.id),
+      report_date: product.report_date,
+      product_name: product.product_name || "",
+      quantity: Number(product.quantity) || 0,
+      revenue: Number(product.revenue) || 0,
+    }));
+
+    setDailyProductReports(products);
+
+    console.log("Günlük ürün raporu:", reportDate, products);
+  } catch (error: any) {
+    console.error("Günlük ürün raporu alınamadı:", error);
+
+    setDailyProductReports([]);
+
+    alert(
+      `Günlük ürün raporu alınamadı.\n\n${
+        error?.message || "Bilinmeyen hata"
+      }`
+    );
+  } finally {
+    setDailyDetailLoading(false);
+  }
+};
 
   /* =========================================================
      GÜN DETAYINI AÇ
      ========================================================= */
 
-  const openDailyReport = async (
-    reportDate: string
-  ) => {
-    if (
-      selectedReportDate ===
-      reportDate
-    ) {
-      setSelectedReportDate(null);
-      setDailyProductReports([]);
-      return;
-    }
+  const openDailyReport = async (reportDate: string) => {
+  if (selectedReportDate === reportDate) {
+    setSelectedReportDate(null);
+    setDailyProductReports([]);
+    return;
+  }
 
-    setSelectedReportDate(
-      reportDate
-    );
+  setSelectedReportDate(reportDate);
+  setDailyProductReports([]);
 
-    await fetchDailyProductReport(
-      reportDate
-    );
-  };
+  await fetchDailyProductReport(reportDate);
+};
 
   /* =========================================================
      KATEGORİLERİ GETİR
