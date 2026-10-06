@@ -522,7 +522,9 @@ export default function YonetimPage() {
       if (dailyError) {
         throw dailyError;
       }
-
+console.log("currentMonth:", currentMonth);
+console.log("dailyData:", dailyData);
+console.log("dailyError:", dailyError);
       setDailyReports(
         (dailyData || []).map(
           (report: any) => ({
