@@ -133,6 +133,7 @@ export default function YonetimPage() {
 
   const [dailyDetailLoading, setDailyDetailLoading] =
     useState(false);
+  const [showMonthlyReport, setShowMonthlyReport] = useState(false);
 
   /* =========================================================
      KATEGORİ STATE
@@ -483,7 +484,7 @@ export default function YonetimPage() {
          ----------------------------------------------------- */
 
       const firstDay =
-        currentMonth;
+  `${currentMonth}-01`;
 
       const now = new Date();
 
@@ -3125,527 +3126,591 @@ export default function YonetimPage() {
             </div>
           )}
 
-          {/* =================================================
-              RAPORLAR
-              ================================================= */}
+          {/* =========================================================
+    RAPORLAR
+    ========================================================= */}
 
-          {adminSection ===
-            "reports" && (
+<div className="mt-4 rounded-xl border border-gray-200 bg-white p-3">
 
-            <div className="mt-3 border-t border-gray-200 pt-3">
+  {/* BAŞLIK */}
+  <div className="flex items-center justify-between gap-2">
 
-              {/* RAPOR BAŞLIĞI */}
+    <div>
+      <h2 className="text-sm font-bold text-[#061b3d]">
+        📊 RAPORLAR
+      </h2>
 
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <p className="mt-0.5 text-[10px] text-gray-500">
+        {getCurrentMonthName()} {new Date().getFullYear()} satış raporu
+      </p>
+    </div>
 
-                <div>
+    <button
+      type="button"
+      onClick={fetchReports}
+      disabled={reportLoading}
+      className="rounded-lg bg-[#061b3d] px-3 py-1.5 text-[10px] font-bold text-white transition hover:bg-[#0b2d62] disabled:opacity-50 active:scale-95"
+    >
+      {reportLoading ? "⏳" : "🔄 Yenile"}
+    </button>
 
-                  <h2 className="text-base font-bold text-[#061b3d]">
-                    📊 RAPORLAR —{" "}
-                    {getCurrentMonthName()}{" "}
-                    {new Date().getFullYear()}
-                  </h2>
+  </div>
 
-                  <p className="mt-0.5 text-[10px] text-gray-500">
-                    Yalnızca içinde bulunduğunuz
-                    ayın satışları gösterilir.
-                  </p>
+  {reportLoading ? (
 
-                </div>
+    <div className="mt-3 rounded-xl bg-gray-50 p-8 text-center">
+      <div className="text-3xl">⏳</div>
 
-                <button
-                  type="button"
-                  onClick={
-                    fetchReports
-                  }
-                  disabled={
-                    reportLoading
-                  }
-                  className="rounded-lg bg-[#061b3d] px-3 py-1.5 text-[10px] font-bold text-white transition hover:bg-[#0b2d62] disabled:opacity-50 active:scale-95"
-                >
-                  {reportLoading
-                    ? "⏳"
-                    : "🔄 Yenile"}
-                </button>
+      <p className="mt-2 text-xs font-semibold text-gray-500">
+        Raporlar yükleniyor...
+      </p>
+    </div>
 
+  ) : (
+
+    <>
+
+      {/* =====================================================
+          GÜNLÜK RAPOR — ANA EKRAN
+          ===================================================== */}
+
+      {!showMonthlyReport && (
+
+        <div className="mt-4">
+
+          <div className="flex items-center justify-between gap-2">
+
+            <div>
+              <h3 className="text-sm font-bold text-[#061b3d]">
+                📅 Günlük Raporlar
+              </h3>
+
+              <p className="mt-0.5 text-[10px] text-gray-500">
+                Tarihe tıklayarak o günün satışlarını görebilirsiniz.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() =>
+                setShowMonthlyReport(true)
+              }
+              className="rounded-lg border border-[#061b3d] bg-white px-3 py-1.5 text-[10px] font-bold text-[#061b3d] transition hover:bg-gray-50 active:scale-95"
+            >
+              📊 Aylık Rapor
+            </button>
+
+          </div>
+
+          {dailyReports.length === 0 ? (
+
+            <div className="mt-3 rounded-xl bg-gray-50 p-6 text-center">
+
+              <div className="text-3xl">
+                📅
               </div>
 
-              {reportLoading ? (
+              <p className="mt-2 text-xs font-semibold text-gray-500">
+                Bu ay henüz satış bulunmuyor.
+              </p>
 
-                <div className="mt-3 rounded-xl bg-gray-50 p-8 text-center">
+            </div>
 
-                  <div className="text-3xl">
-                    ⏳
+          ) : (
+
+            <div className="mt-3 space-y-2">
+
+              {dailyReports.map((report) => {
+
+                const isSelected =
+                  selectedReportDate === report.report_date;
+
+                return (
+
+                  <div
+                    key={report.id}
+                    className={`overflow-hidden rounded-xl border transition ${
+                      isSelected
+                        ? "border-[#061b3d] shadow-md"
+                        : "border-gray-200"
+                    }`}
+                  >
+
+                    {/* GÜN SATIRI */}
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        openDailyReport(
+                          report.report_date
+                        )
+                      }
+                      className={`w-full p-3 text-left transition ${
+                        isSelected
+                          ? "bg-blue-50"
+                          : "bg-white hover:bg-gray-50"
+                      }`}
+                    >
+
+                      <div className="flex items-center justify-between gap-3">
+
+                        <div className="min-w-0">
+
+                          <p className="text-xs font-bold text-[#061b3d]">
+                            📅{" "}
+                            {formatReportDate(
+                              report.report_date
+                            )}
+                          </p>
+
+                          <div className="mt-1 flex flex-wrap gap-2">
+
+                            <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[9px] font-semibold text-gray-600">
+                              🧾 {report.total_orders} sipariş
+                            </span>
+
+                            <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[9px] font-semibold text-gray-600">
+                              🍽️ {report.total_items} ürün
+                            </span>
+
+                          </div>
+
+                        </div>
+
+                        <div className="flex items-center gap-3">
+
+                          <div className="text-right">
+
+                            <p className="text-[8px] font-semibold text-gray-400">
+                              GÜNLÜK CİRO
+                            </p>
+
+                            <p className="text-sm font-bold text-green-700">
+                              {formatCurrency(
+                                report.total_revenue
+                              )}
+                            </p>
+
+                          </div>
+
+                          <span className="text-lg text-gray-400">
+                            {isSelected ? "⌃" : "⌄"}
+                          </span>
+
+                        </div>
+
+                      </div>
+
+                    </button>
+
+                    {/* GÜNÜN ÜRÜN DETAYI */}
+
+                    {isSelected && (
+
+                      <div className="border-t border-gray-200 bg-gray-50 p-3">
+
+                        <div className="mb-3 flex items-center justify-between">
+
+                          <div>
+
+                            <h4 className="text-xs font-bold text-[#061b3d]">
+                              🍽️{" "}
+                              {formatReportDate(
+                                report.report_date
+                              )} — Satılan Ürünler
+                            </h4>
+
+                            <p className="mt-0.5 text-[9px] text-gray-500">
+                              O gün satılan ürünler
+                            </p>
+
+                          </div>
+
+                          <div className="text-right">
+
+                            <p className="text-[8px] text-gray-400">
+                              GÜN TOPLAMI
+                            </p>
+
+                            <p className="text-xs font-bold text-green-700">
+                              {formatCurrency(
+                                report.total_revenue
+                              )}
+                            </p>
+
+                          </div>
+
+                        </div>
+
+                        {dailyDetailLoading ? (
+
+                          <div className="rounded-lg bg-white p-5 text-center">
+                            <div className="text-xl">⏳</div>
+
+                            <p className="mt-1 text-[10px] text-gray-500">
+                              Ürün detayları yükleniyor...
+                            </p>
+                          </div>
+
+                        ) : dailyProductReports.length === 0 ? (
+
+                          <div className="rounded-lg bg-white p-4 text-center text-[10px] text-gray-500">
+                            Bu gün için ürün detayı bulunamadı.
+                          </div>
+
+                        ) : (
+
+                          <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+
+                            <div className="grid grid-cols-[1fr_auto_auto] gap-2 border-b border-gray-200 bg-gray-100 px-3 py-2 text-[9px] font-bold text-gray-500">
+
+                              <div>
+                                ÜRÜN
+                              </div>
+
+                              <div className="text-center">
+                                ADET
+                              </div>
+
+                              <div className="text-right">
+                                TUTAR
+                              </div>
+
+                            </div>
+
+                            {dailyProductReports.map(
+                              (product) => (
+
+                                <div
+                                  key={product.id}
+                                  className="grid grid-cols-[1fr_auto_auto] gap-2 border-b border-gray-100 px-3 py-2 last:border-b-0"
+                                >
+
+                                  <div className="min-w-0">
+
+                                    <p className="truncate text-[11px] font-bold text-gray-800">
+                                      {product.product_name}
+                                    </p>
+
+                                  </div>
+
+                                  <div className="min-w-[45px] text-center">
+
+                                    <span className="inline-flex min-w-[28px] items-center justify-center rounded-full bg-[#061b3d] px-2 py-0.5 text-[9px] font-bold text-white">
+                                      {product.quantity}
+                                    </span>
+
+                                  </div>
+
+                                  <div className="min-w-[85px] text-right text-[10px] font-bold text-green-700">
+                                    {formatCurrency(
+                                      product.revenue
+                                    )}
+                                  </div>
+
+                                </div>
+
+                              )
+                            )}
+
+                            <div className="grid grid-cols-[1fr_auto_auto] gap-2 bg-[#061b3d] px-3 py-2 text-white">
+
+                              <div className="text-[10px] font-bold">
+                                GÜN TOPLAMI
+                              </div>
+
+                              <div className="text-center text-[10px] font-bold">
+                                {report.total_items}
+                              </div>
+
+                              <div className="text-right text-[10px] font-bold text-[#e8c866]">
+                                {formatCurrency(
+                                  report.total_revenue
+                                )}
+                              </div>
+
+                            </div>
+
+                          </div>
+
+                        )}
+
+                      </div>
+
+                    )}
+
                   </div>
 
-                  <p className="mt-2 text-xs font-semibold text-gray-500">
-                    Raporlar yükleniyor...
+                );
+
+              })}
+
+            </div>
+
+          )}
+
+        </div>
+
+      )}
+
+      {/* =====================================================
+          AYLIK RAPOR
+          ===================================================== */}
+
+      {showMonthlyReport && (
+
+        <div className="mt-4">
+
+          <div className="flex items-center justify-between gap-2">
+
+            <div>
+              <h3 className="text-sm font-bold text-[#061b3d]">
+                📊 {getCurrentMonthName()} {new Date().getFullYear()} Raporu
+              </h3>
+
+              <p className="mt-0.5 text-[10px] text-gray-500">
+                Gün gün aylık satış özeti
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() =>
+                setShowMonthlyReport(false)
+              }
+              className="rounded-lg bg-[#061b3d] px-3 py-1.5 text-[10px] font-bold text-white transition hover:bg-[#0b2d62] active:scale-95"
+            >
+              ← Günlük Rapor
+            </button>
+
+          </div>
+
+          {/* AYLIK TOPLAM */}
+
+          <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+
+            <div className="rounded-xl bg-[#061b3d] p-3 text-white">
+
+              <p className="text-[9px] font-semibold text-gray-300">
+                💰 AYLIK CİRO
+              </p>
+
+              <p className="mt-1 text-xl font-bold text-[#e8c866]">
+                {formatCurrency(
+                  monthlyReport?.total_revenue || 0
+                )}
+              </p>
+
+            </div>
+
+            <div className="rounded-xl bg-gray-100 p-3">
+
+              <p className="text-[9px] font-semibold text-gray-500">
+                🧾 TOPLAM SİPARİŞ
+              </p>
+
+              <p className="mt-1 text-xl font-bold text-[#061b3d]">
+                {monthlyReport?.total_orders || 0}
+              </p>
+
+            </div>
+
+            <div className="rounded-xl bg-gray-100 p-3">
+
+              <p className="text-[9px] font-semibold text-gray-500">
+                🍽️ SATILAN ÜRÜN
+              </p>
+
+              <p className="mt-1 text-xl font-bold text-[#061b3d]">
+                {monthlyReport?.total_items || 0}
+              </p>
+
+            </div>
+
+          </div>
+
+          {/* GÜN GÜN AYLIK LİSTE */}
+
+          <div className="mt-4">
+
+            <h4 className="text-xs font-bold text-[#061b3d]">
+              📅 Gün Gün Satışlar
+            </h4>
+
+            <p className="mt-0.5 text-[9px] text-gray-500">
+              Bir güne tıklayarak o günün ürünlerini görebilirsiniz.
+            </p>
+
+            <div className="mt-2 space-y-2">
+
+              {dailyReports.length === 0 ? (
+
+                <div className="rounded-xl bg-gray-50 p-5 text-center">
+
+                  <div className="text-2xl">
+                    📅
+                  </div>
+
+                  <p className="mt-2 text-[10px] font-semibold text-gray-500">
+                    Bu ay henüz satış bulunmuyor.
                   </p>
 
                 </div>
 
               ) : (
 
-                <>
+                dailyReports.map((report) => {
 
-                  {/* =================================================
-                      AYLIK ÖZET
-                      ================================================= */}
+                  const isSelected =
+                    selectedReportDate === report.report_date;
 
-                  <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                  return (
 
-                    <div className="rounded-xl bg-[#061b3d] p-3 text-white">
+                    <div
+                      key={`monthly-${report.id}`}
+                      className="overflow-hidden rounded-xl border border-gray-200"
+                    >
 
-                      <p className="text-[10px] font-semibold text-gray-300">
-                        💰 AYLIK CİRO
-                      </p>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          openDailyReport(
+                            report.report_date
+                          )
+                        }
+                        className={`w-full p-3 text-left transition ${
+                          isSelected
+                            ? "bg-blue-50"
+                            : "bg-white hover:bg-gray-50"
+                        }`}
+                      >
 
-                      <p className="mt-1 text-xl font-bold text-[#e8c866]">
-                        {formatCurrency(
-                          monthlyReport?.total_revenue ||
-                            0
-                        )}
-                      </p>
+                        <div className="flex items-center justify-between gap-3">
 
-                    </div>
+                          <div>
 
-                    <div className="rounded-xl bg-gray-100 p-3">
+                            <p className="text-xs font-bold text-[#061b3d]">
+                              📅{" "}
+                              {formatReportDate(
+                                report.report_date
+                              )}
+                            </p>
 
-                      <p className="text-[10px] font-semibold text-gray-500">
-                        🧾 TOPLAM SİPARİŞ
-                      </p>
+                            <p className="mt-1 text-[9px] text-gray-500">
+                              {report.total_orders} sipariş •{" "}
+                              {report.total_items} ürün
+                            </p>
 
-                      <p className="mt-1 text-xl font-bold text-[#061b3d]">
-                        {monthlyReport?.total_orders ||
-                          0}
-                      </p>
+                          </div>
 
-                      <p className="text-[9px] text-gray-500">
-                        Bu ay teslim edilen siparişler
-                      </p>
+                          <div className="flex items-center gap-3">
 
-                    </div>
+                            <p className="text-sm font-bold text-green-700">
+                              {formatCurrency(
+                                report.total_revenue
+                              )}
+                            </p>
 
-                    <div className="rounded-xl bg-gray-100 p-3">
+                            <span className="text-lg text-gray-400">
+                              {isSelected ? "⌃" : "⌄"}
+                            </span>
 
-                      <p className="text-[10px] font-semibold text-gray-500">
-                        🍽️ SATILAN TOPLAM ÜRÜN
-                      </p>
+                          </div>
 
-                      <p className="mt-1 text-xl font-bold text-[#061b3d]">
-                        {monthlyReport?.total_items ||
-                          0}
-                      </p>
-
-                      <p className="text-[9px] text-gray-500">
-                        Bu ay satılan toplam adet
-                      </p>
-
-                    </div>
-
-                  </div>
-
-                  {/* =================================================
-                      GÜNLÜK RAPOR
-                      ================================================= */}
-
-                  <div className="mt-4">
-
-                    <div className="flex items-center justify-between">
-
-                      <div>
-
-                        <h3 className="text-sm font-bold text-[#061b3d]">
-                          📅 Günlük Rapor
-                        </h3>
-
-                        <p className="mt-0.5 text-[10px] text-gray-500">
-                          Bir güne tıklayarak ürün detaylarını görebilirsiniz.
-                        </p>
-
-                      </div>
-
-                      <div className="rounded-full bg-gray-100 px-2.5 py-1 text-[9px] font-bold text-gray-600">
-                        {dailyReports.length} gün satış
-                      </div>
-
-                    </div>
-
-                    {dailyReports.length ===
-                    0 ? (
-
-                      <div className="mt-2 rounded-xl bg-gray-50 p-5 text-center">
-
-                        <div className="text-3xl">
-                          📅
                         </div>
 
-                        <p className="mt-2 text-xs font-semibold text-gray-500">
-                          Bu ay henüz satış bulunmuyor.
-                        </p>
+                      </button>
 
-                      </div>
+                      {isSelected && (
 
-                    ) : (
+                        <div className="border-t border-gray-200 bg-gray-50 p-3">
 
-                      <div className="mt-2 space-y-2">
+                          <div className="mb-2 flex items-center justify-between">
 
-                        {dailyReports.map(
-                          (report) => {
+                            <h5 className="text-xs font-bold text-[#061b3d]">
+                              🍽️ Satılan Ürünler
+                            </h5>
 
-                            const isSelected =
-                              selectedReportDate ===
-                              report.report_date;
+                            <span className="text-[10px] font-bold text-green-700">
+                              {formatCurrency(
+                                report.total_revenue
+                              )}
+                            </span>
 
-                            return (
-                              <div
-                                key={
-                                  report.id
-                                }
-                                className={`overflow-hidden rounded-xl border transition ${
-                                  isSelected
-                                    ? "border-[#061b3d] shadow-md"
-                                    : "border-gray-200"
-                                }`}
-                              >
+                          </div>
 
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    openDailyReport(
-                                      report.report_date
-                                    )
-                                  }
-                                  className={`w-full p-3 text-left transition ${
-                                    isSelected
-                                      ? "bg-blue-50"
-                                      : "bg-white hover:bg-gray-50"
-                                  }`}
-                                >
+                          {dailyDetailLoading ? (
 
-                                  <div className="flex items-center justify-between gap-3">
+                            <div className="rounded-lg bg-white p-4 text-center text-[10px] text-gray-500">
+                              ⏳ Ürünler yükleniyor...
+                            </div>
 
-                                    <div className="min-w-0">
+                          ) : dailyProductReports.length === 0 ? (
 
-                                      <p className="text-xs font-bold text-[#061b3d]">
-                                        📅{" "}
-                                        {formatReportDate(
-                                          report.report_date
-                                        )}
-                                      </p>
+                            <div className="rounded-lg bg-white p-4 text-center text-[10px] text-gray-500">
+                              Bu gün için ürün detayı bulunamadı.
+                            </div>
 
-                                      <p className="mt-0.5 text-[9px] text-gray-500">
-                                        {report.total_orders} sipariş •{" "}
-                                        {report.total_items} ürün
-                                      </p>
+                          ) : (
 
-                                    </div>
+                            <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
 
-                                    <div className="flex items-center gap-3">
+                              {dailyProductReports.map(
+                                (product) => (
 
-                                      <div className="text-right">
+                                  <div
+                                    key={`monthly-product-${product.id}`}
+                                    className="grid grid-cols-[1fr_auto_auto] gap-2 border-b border-gray-100 px-3 py-2 last:border-b-0"
+                                  >
 
-                                        <p className="text-[9px] font-semibold text-gray-400">
-                                          GÜNLÜK CİRO
-                                        </p>
+                                    <p className="truncate text-[10px] font-bold text-gray-800">
+                                      {product.product_name}
+                                    </p>
 
-                                        <p className="text-sm font-bold text-green-700">
-                                          {formatCurrency(
-                                            report.total_revenue
-                                          )}
-                                        </p>
+                                    <span className="text-center text-[10px] font-bold text-[#061b3d]">
+                                      {product.quantity} adet
+                                    </span>
 
-                                      </div>
-
-                                      <span className="text-lg text-gray-400">
-                                        {isSelected
-                                          ? "⌃"
-                                          : "⌄"}
-                                      </span>
-
-                                    </div>
+                                    <span className="text-right text-[10px] font-bold text-green-700">
+                                      {formatCurrency(
+                                        product.revenue
+                                      )}
+                                    </span>
 
                                   </div>
 
-                                </button>
-
-                                {/* =================================================
-                                    GÜN DETAYI
-                                    ================================================= */}
-
-                                {isSelected && (
-
-                                  <div className="border-t border-gray-200 bg-gray-50 p-3">
-
-                                    <div className="mb-2 flex items-center justify-between">
-
-                                      <div>
-
-                                        <h4 className="text-xs font-bold text-[#061b3d]">
-                                          🍽️{" "}
-                                          {formatReportDate(
-                                            report.report_date
-                                          )}{" "}
-                                          — Ürün Detayı
-                                        </h4>
-
-                                        <p className="mt-0.5 text-[9px] text-gray-500">
-                                          O gün satılan ürünlerin tamamı
-                                        </p>
-
-                                      </div>
-
-                                      <div className="text-right">
-
-                                        <p className="text-[9px] text-gray-400">
-                                          TOPLAM
-                                        </p>
-
-                                        <p className="text-xs font-bold text-green-700">
-                                          {formatCurrency(
-                                            report.total_revenue
-                                          )}
-                                        </p>
-
-                                      </div>
-
-                                    </div>
-
-                                    {dailyDetailLoading ? (
-
-                                      <div className="rounded-lg bg-white p-5 text-center">
-
-                                        <div className="text-xl">
-                                          ⏳
-                                        </div>
-
-                                        <p className="mt-1 text-[10px] text-gray-500">
-                                          Ürün detayları yükleniyor...
-                                        </p>
-
-                                      </div>
-
-                                    ) : dailyProductReports.length ===
-                                      0 ? (
-
-                                      <div className="rounded-lg bg-white p-4 text-center text-[10px] text-gray-500">
-                                        Bu gün için ürün detayı bulunamadı.
-                                      </div>
-
-                                    ) : (
-
-                                      <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
-
-                                        <div className="grid grid-cols-[1fr_auto_auto] gap-2 border-b border-gray-200 bg-gray-100 px-3 py-2 text-[9px] font-bold text-gray-500">
-
-                                          <div>
-                                            ÜRÜN
-                                          </div>
-
-                                          <div className="text-center">
-                                            ADET
-                                          </div>
-
-                                          <div className="text-right">
-                                            TUTAR
-                                          </div>
-
-                                        </div>
-
-                                        {dailyProductReports.map(
-                                          (
-                                            product
-                                          ) => (
-
-                                            <div
-                                              key={
-                                                product.id
-                                              }
-                                              className="grid grid-cols-[1fr_auto_auto] gap-2 border-b border-gray-100 px-3 py-2 last:border-b-0"
-                                            >
-
-                                              <div className="min-w-0">
-
-                                                <p className="truncate text-[11px] font-bold text-gray-800">
-                                                  {
-                                                    product.product_name
-                                                  }
-                                                </p>
-
-                                              </div>
-
-                                              <div className="min-w-[45px] text-center">
-
-                                                <span className="inline-flex min-w-[28px] items-center justify-center rounded-full bg-[#061b3d] px-2 py-0.5 text-[9px] font-bold text-white">
-                                                  {
-                                                    product.quantity
-                                                  }
-                                                </span>
-
-                                              </div>
-
-                                              <div className="min-w-[85px] text-right text-[10px] font-bold text-green-700">
-                                                {formatCurrency(
-                                                  product.revenue
-                                                )}
-                                              </div>
-
-                                            </div>
-
-                                          )
-                                        )}
-
-                                        <div className="grid grid-cols-[1fr_auto_auto] gap-2 bg-[#061b3d] px-3 py-2 text-white">
-
-                                          <div className="text-[10px] font-bold">
-                                            GÜN TOPLAMI
-                                          </div>
-
-                                          <div className="text-center text-[10px] font-bold">
-                                            {
-                                              report.total_items
-                                            }
-                                          </div>
-
-                                          <div className="text-right text-[10px] font-bold text-[#e8c866]">
-                                            {formatCurrency(
-                                              report.total_revenue
-                                            )}
-                                          </div>
-
-                                        </div>
-
-                                      </div>
-
-                                    )}
-
-                                  </div>
-
-                                )}
-
-                              </div>
-                            );
-                          }
-                        )}
-
-                      </div>
-
-                    )}
-
-                  </div>
-
-                  {/* =================================================
-                      EN ÇOK SATAN ÜRÜNLER
-                      ================================================= */}
-
-                  <div className="mt-4">
-
-                    <div className="flex items-center justify-between">
-
-                      <div>
-
-                        <h3 className="text-sm font-bold text-[#061b3d]">
-                          🏆 En Çok Satan Ürünler
-                        </h3>
-
-                        <p className="mt-0.5 text-[10px] text-gray-500">
-                          {getCurrentMonthName()} ayındaki toplam satışlar
-                        </p>
-
-                      </div>
-
-                      <div className="rounded-full bg-gray-100 px-2.5 py-1 text-[9px] font-bold text-gray-600">
-                        {monthlyProductReports.length} ürün
-                      </div>
-
-                    </div>
-
-                    {monthlyProductReports.length ===
-                    0 ? (
-
-                      <div className="mt-2 rounded-xl bg-gray-50 p-5 text-center">
-
-                        <div className="text-3xl">
-                          🏆
-                        </div>
-
-                        <p className="mt-2 text-xs font-semibold text-gray-500">
-                          Bu ay henüz ürün satışı bulunmuyor.
-                        </p>
-
-                      </div>
-
-                    ) : (
-
-                      <div className="mt-2 overflow-hidden rounded-xl border border-gray-200 bg-white">
-
-                        {monthlyProductReports.map(
-                          (
-                            product,
-                            index
-                          ) => (
-
-                            <div
-                              key={
-                                product.id
-                              }
-                              className="flex items-center gap-3 border-b border-gray-100 px-3 py-2.5 last:border-b-0"
-                            >
-
-                              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#061b3d] text-[10px] font-bold text-[#e8c866]">
-                                {index +
-                                  1}
-                              </div>
-
-                              <div className="min-w-0 flex-1">
-
-                                <p className="truncate text-xs font-bold text-gray-800">
-                                  {
-                                    product.product_name
-                                  }
-                                </p>
-
-                                <p className="mt-0.5 text-[9px] text-gray-500">
-                                  {formatCurrency(
-                                    product.revenue
-                                  )}{" "}
-                                  ciro
-                                </p>
-
-                              </div>
-
-                              <div className="text-right">
-
-                                <p className="text-sm font-bold text-[#061b3d]">
-                                  {
-                                    product.quantity
-                                  }
-                                </p>
-
-                                <p className="text-[8px] text-gray-400">
-                                  adet
-                                </p>
-
-                              </div>
+                                )
+                              )}
 
                             </div>
 
-                          )
-                        )}
+                          )}
 
-                      </div>
+                        </div>
 
-                    )}
+                      )}
 
-                  </div>
+                    </div>
 
-                </>
+                  );
+
+                })
 
               )}
 
             </div>
-          )}
 
+          </div>
+
+        </div>
+
+      )}
+
+    </>
+
+  )}
+
+</div>
           {/* ALT BİLGİ / ÇIKIŞ */}
 
           <div className="mt-3 flex items-center justify-between border-t border-gray-200 pt-3">
