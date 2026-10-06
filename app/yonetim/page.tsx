@@ -317,15 +317,15 @@ export default function YonetimPage() {
      ========================================================= */
 
   const getCurrentMonthKey = () => {
-    const now = new Date();
+  const now = new Date();
 
-    const year = now.getFullYear();
-    const month = String(
-      now.getMonth() + 1
-    ).padStart(2, "0");
+  const year = now.getFullYear();
+  const month = String(
+    now.getMonth() + 1
+  ).padStart(2, "0");
 
-    return `${year}-${month}-01`;
-  };
+  return `${year}-${month}`;
+};
 
   /* =========================================================
      AY ADI
