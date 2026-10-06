@@ -26,6 +26,38 @@ type Category = {
   sort_order: number;
 };
 
+type DailyReport = {
+  id: number;
+  report_date: string;
+  total_revenue: number;
+  total_orders: number;
+  total_items: number;
+};
+
+type DailyProductReport = {
+  id: number;
+  report_date: string;
+  product_name: string;
+  quantity: number;
+  revenue: number;
+};
+
+type MonthlyReport = {
+  id: number;
+  report_month: string;
+  total_revenue: number;
+  total_orders: number;
+  total_items: number;
+};
+
+type MonthlyProductReport = {
+  id: number;
+  report_month: string;
+  product_name: string;
+  quantity: number;
+  revenue: number;
+};
+
 const fallbackCategories = [
   "Kahvaltı",
   "Omlet ve Yumurta Çeşitleri",
@@ -75,7 +107,32 @@ export default function YonetimPage() {
     useState("Tümü");
 
   const [adminSection, setAdminSection] =
-    useState<"categories" | "menu">("menu");
+    useState<"categories" | "menu" | "reports">("menu");
+
+  /* =========================================================
+     RAPOR STATE
+     ========================================================= */
+
+  const [reportLoading, setReportLoading] =
+    useState(false);
+
+  const [monthlyReport, setMonthlyReport] =
+    useState<MonthlyReport | null>(null);
+
+  const [monthlyProductReports, setMonthlyProductReports] =
+    useState<MonthlyProductReport[]>([]);
+
+  const [dailyReports, setDailyReports] =
+    useState<DailyReport[]>([]);
+
+  const [selectedReportDate, setSelectedReportDate] =
+    useState<string | null>(null);
+
+  const [dailyProductReports, setDailyProductReports] =
+    useState<DailyProductReport[]>([]);
+
+  const [dailyDetailLoading, setDailyDetailLoading] =
+    useState(false);
 
   /* =========================================================
      KATEGORİ STATE
@@ -246,21 +303,383 @@ export default function YonetimPage() {
   }, []);
 
   /* =========================================================
+     RAPORLARI YÜKLE
+     ========================================================= */
+
+  useEffect(() => {
+    if (adminSection === "reports") {
+      fetchReports();
+    }
+  }, [adminSection]);
+
+  /* =========================================================
+     MEVCUT AY ANAHTARI
+     ========================================================= */
+
+  const getCurrentMonthKey = () => {
+    const now = new Date();
+
+    const year = now.getFullYear();
+    const month = String(
+      now.getMonth() + 1
+    ).padStart(2, "0");
+
+    return `${year}-${month}-01`;
+  };
+
+  /* =========================================================
+     AY ADI
+     ========================================================= */
+
+  const getCurrentMonthName = () => {
+    const now = new Date();
+
+    return new Intl.DateTimeFormat(
+      "tr-TR",
+      {
+        month: "long",
+      }
+    )
+      .format(now)
+      .toLocaleUpperCase("tr-TR");
+  };
+
+  /* =========================================================
+     TARİH FORMATLA
+     ========================================================= */
+
+  const formatReportDate = (
+    dateString: string
+  ) => {
+    const date = new Date(
+      `${dateString}T12:00:00`
+    );
+
+    return new Intl.DateTimeFormat(
+      "tr-TR",
+      {
+        day: "numeric",
+        month: "long",
+      }
+    ).format(date);
+  };
+
+  /* =========================================================
+     PARA FORMATLA
+     ========================================================= */
+
+  const formatCurrency = (
+    value: number
+  ) => {
+    return new Intl.NumberFormat(
+      "tr-TR",
+      {
+        style: "currency",
+        currency: "TRY",
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }
+    ).format(Number(value) || 0);
+  };
+
+  /* =========================================================
+     RAPORLARI GETİR
+     ========================================================= */
+
+  const fetchReports = async () => {
+    setReportLoading(true);
+
+    try {
+      const currentMonth =
+        getCurrentMonthKey();
+
+      /* -----------------------------------------------------
+         AYLIK RAPOR
+         ----------------------------------------------------- */
+
+      const {
+        data: monthlyData,
+        error: monthlyError,
+      } = await supabase
+        .from("monthly_report")
+        .select("*")
+        .eq(
+          "report_month",
+          currentMonth
+        )
+        .maybeSingle();
+
+      if (monthlyError) {
+        throw monthlyError;
+      }
+
+      setMonthlyReport(
+        monthlyData
+          ? {
+              id: Number(monthlyData.id),
+              report_month:
+                monthlyData.report_month,
+              total_revenue:
+                Number(
+                  monthlyData.total_revenue
+                ) || 0,
+              total_orders:
+                Number(
+                  monthlyData.total_orders
+                ) || 0,
+              total_items:
+                Number(
+                  monthlyData.total_items
+                ) || 0,
+            }
+          : null
+      );
+
+      /* -----------------------------------------------------
+         AYLIK ÜRÜNLER
+         ----------------------------------------------------- */
+
+      const {
+        data: monthlyProducts,
+        error:
+          monthlyProductsError,
+      } = await supabase
+        .from("monthly_product_report")
+        .select("*")
+        .eq(
+          "report_month",
+          currentMonth
+        )
+        .order("quantity", {
+          ascending: false,
+        });
+
+      if (monthlyProductsError) {
+        throw monthlyProductsError;
+      }
+
+      setMonthlyProductReports(
+        (monthlyProducts || []).map(
+          (product: any) => ({
+            id: Number(product.id),
+            report_month:
+              product.report_month,
+            product_name:
+              product.product_name || "",
+            quantity:
+              Number(
+                product.quantity
+              ) || 0,
+            revenue:
+              Number(
+                product.revenue
+              ) || 0,
+          })
+        )
+      );
+
+      /* -----------------------------------------------------
+         GÜNLÜK RAPORLAR
+         ----------------------------------------------------- */
+
+      const firstDay =
+        currentMonth;
+
+      const now = new Date();
+
+      const lastDay = new Date(
+        now.getFullYear(),
+        now.getMonth() + 1,
+        0
+      );
+
+      const lastDayString =
+        `${lastDay.getFullYear()}-${String(
+          lastDay.getMonth() + 1
+        ).padStart(2, "0")}-${String(
+          lastDay.getDate()
+        ).padStart(2, "0")}`;
+
+      const {
+        data: dailyData,
+        error: dailyError,
+      } = await supabase
+        .from("daily_report")
+        .select("*")
+        .gte(
+          "report_date",
+          firstDay
+        )
+        .lte(
+          "report_date",
+          lastDayString
+        )
+        .order("report_date", {
+          ascending: false,
+        });
+
+      if (dailyError) {
+        throw dailyError;
+      }
+
+      setDailyReports(
+        (dailyData || []).map(
+          (report: any) => ({
+            id: Number(report.id),
+            report_date:
+              report.report_date,
+            total_revenue:
+              Number(
+                report.total_revenue
+              ) || 0,
+            total_orders:
+              Number(
+                report.total_orders
+              ) || 0,
+            total_items:
+              Number(
+                report.total_items
+              ) || 0,
+          })
+        )
+      );
+
+      /* -----------------------------------------------------
+         AÇIK GÜNÜ YENİDEN GETİR
+         ----------------------------------------------------- */
+
+      if (selectedReportDate) {
+        await fetchDailyProductReport(
+          selectedReportDate
+        );
+      }
+    } catch (error: any) {
+      console.error(
+        "Raporlar alınamadı:",
+        error
+      );
+
+      alert(
+        `Raporlar alınamadı.\n\n${
+          error?.message ||
+          "Bilinmeyen hata"
+        }`
+      );
+    } finally {
+      setReportLoading(false);
+    }
+  };
+
+  /* =========================================================
+     GÜNLÜK ÜRÜN DETAYINI GETİR
+     ========================================================= */
+
+  const fetchDailyProductReport = async (
+    reportDate: string
+  ) => {
+    setDailyDetailLoading(true);
+
+    try {
+      const {
+        data,
+        error,
+      } = await supabase
+        .from("daily_product_report")
+        .select("*")
+        .eq(
+          "report_date",
+          reportDate
+        )
+        .order("quantity", {
+          ascending: false,
+        });
+
+      if (error) {
+        throw error;
+      }
+
+      setDailyProductReports(
+        (data || []).map(
+          (product: any) => ({
+            id: Number(product.id),
+            report_date:
+              product.report_date,
+            product_name:
+              product.product_name || "",
+            quantity:
+              Number(
+                product.quantity
+              ) || 0,
+            revenue:
+              Number(
+                product.revenue
+              ) || 0,
+          })
+        )
+      );
+    } catch (error: any) {
+      console.error(
+        "Günlük ürün raporu alınamadı:",
+        error
+      );
+
+      alert(
+        `Günlük ürün raporu alınamadı.\n\n${
+          error?.message ||
+          "Bilinmeyen hata"
+        }`
+      );
+
+      setDailyProductReports([]);
+    } finally {
+      setDailyDetailLoading(false);
+    }
+  };
+
+  /* =========================================================
+     GÜN DETAYINI AÇ
+     ========================================================= */
+
+  const openDailyReport = async (
+    reportDate: string
+  ) => {
+    if (
+      selectedReportDate ===
+      reportDate
+    ) {
+      setSelectedReportDate(null);
+      setDailyProductReports([]);
+      return;
+    }
+
+    setSelectedReportDate(
+      reportDate
+    );
+
+    await fetchDailyProductReport(
+      reportDate
+    );
+  };
+
+  /* =========================================================
      KATEGORİLERİ GETİR
      ========================================================= */
 
   const fetchCategories = async () => {
     setCategoryLoading(true);
 
-    const { data, error } = await supabase
-      .from("menu_categories")
-      .select("id,name,image,sort_order")
-      .order("sort_order", {
-        ascending: true,
-      })
-      .order("id", {
-        ascending: true,
-      });
+    const { data, error } =
+      await supabase
+        .from("menu_categories")
+        .select(
+          "id,name,image,sort_order"
+        )
+        .order("sort_order", {
+          ascending: true,
+        })
+        .order("id", {
+          ascending: true,
+        });
 
     if (error) {
       console.error(
@@ -277,14 +696,21 @@ export default function YonetimPage() {
     }
 
     setCategoryList(
-      (data || []).map((category: any) => ({
-        id: Number(category.id),
-        name: category.name || "",
-        image: category.image || "",
-        sort_order: Number(
-          category.sort_order ?? category.id
-        ),
-      }))
+      (data || []).map(
+        (category: any) => ({
+          id: Number(
+            category.id
+          ),
+          name:
+            category.name || "",
+          image:
+            category.image || "",
+          sort_order: Number(
+            category.sort_order ??
+              category.id
+          ),
+        })
+      )
     );
 
     setCategoryLoading(false);
@@ -301,7 +727,8 @@ export default function YonetimPage() {
     const currentIndex =
       categoryList.findIndex(
         (category) =>
-          category.id === categoryId
+          category.id ===
+          categoryId
       );
 
     if (currentIndex === -1) {
@@ -315,7 +742,8 @@ export default function YonetimPage() {
 
     if (
       targetIndex < 0 ||
-      targetIndex >= categoryList.length
+      targetIndex >=
+        categoryList.length
     ) {
       return;
     }
@@ -326,7 +754,9 @@ export default function YonetimPage() {
     const targetCategory =
       categoryList[targetIndex];
 
-    setMovingCategoryId(categoryId);
+    setMovingCategoryId(
+      categoryId
+    );
 
     try {
       const currentSortOrder =
@@ -335,33 +765,35 @@ export default function YonetimPage() {
       const targetSortOrder =
         targetCategory.sort_order;
 
-      const { error: currentError } =
-        await supabase
-          .from("menu_categories")
-          .update({
-            sort_order:
-              targetSortOrder,
-          })
-          .eq(
-            "id",
-            currentCategory.id
-          );
+      const {
+        error: currentError,
+      } = await supabase
+        .from("menu_categories")
+        .update({
+          sort_order:
+            targetSortOrder,
+        })
+        .eq(
+          "id",
+          currentCategory.id
+        );
 
       if (currentError) {
         throw currentError;
       }
 
-      const { error: targetError } =
-        await supabase
-          .from("menu_categories")
-          .update({
-            sort_order:
-              currentSortOrder,
-          })
-          .eq(
-            "id",
-            targetCategory.id
-          );
+      const {
+        error: targetError,
+      } = await supabase
+        .from("menu_categories")
+        .update({
+          sort_order:
+            currentSortOrder,
+        })
+        .eq(
+          "id",
+          targetCategory.id
+        );
 
       if (targetError) {
         throw targetError;
@@ -383,7 +815,9 @@ export default function YonetimPage() {
 
       await fetchCategories();
     } finally {
-      setMovingCategoryId(null);
+      setMovingCategoryId(
+        null
+      );
     }
   };
 
@@ -394,7 +828,8 @@ export default function YonetimPage() {
   const availableCategories =
     categoryList.length > 0
       ? categoryList.map(
-          (category) => category.name
+          (category) =>
+            category.name
         )
       : fallbackCategories;
 
@@ -407,7 +842,8 @@ export default function YonetimPage() {
   ) => {
     return items.filter(
       (item) =>
-        item.category === categoryName
+        item.category ===
+        categoryName
     ).length;
   };
 
@@ -453,14 +889,21 @@ export default function YonetimPage() {
   const validateCategoryImage = (
     file: File
   ) => {
-    if (!file.type.startsWith("image/")) {
+    if (
+      !file.type.startsWith(
+        "image/"
+      )
+    ) {
       alert(
         "Lütfen bir fotoğraf dosyası seçin."
       );
       return false;
     }
 
-    if (file.size > 10 * 1024 * 1024) {
+    if (
+      file.size >
+      10 * 1024 * 1024
+    ) {
       alert(
         "Fotoğraf en fazla 10 MB olabilir."
       );
@@ -477,13 +920,18 @@ export default function YonetimPage() {
   const handleNewCategoryImage = (
     event: ChangeEvent<HTMLInputElement>
   ) => {
-    const file = event.target.files?.[0];
+    const file =
+      event.target.files?.[0];
 
     if (!file) {
       return;
     }
 
-    if (!validateCategoryImage(file)) {
+    if (
+      !validateCategoryImage(
+        file
+      )
+    ) {
       event.target.value = "";
       return;
     }
@@ -499,18 +947,25 @@ export default function YonetimPage() {
   const handleEditingCategoryImage = (
     event: ChangeEvent<HTMLInputElement>
   ) => {
-    const file = event.target.files?.[0];
+    const file =
+      event.target.files?.[0];
 
     if (!file) {
       return;
     }
 
-    if (!validateCategoryImage(file)) {
+    if (
+      !validateCategoryImage(
+        file
+      )
+    ) {
       event.target.value = "";
       return;
     }
 
-    setEditingCategoryImage(file);
+    setEditingCategoryImage(
+      file
+    );
     event.target.value = "";
   };
 
@@ -518,49 +973,54 @@ export default function YonetimPage() {
      KATEGORİ FOTOĞRAFI YÜKLE
      ========================================================= */
 
-  const uploadCategoryImage = async (
-    file: File,
-    categoryId?: number
-  ) => {
-    const extension =
-      file.name
-        .split(".")
-        .pop()
-        ?.toLowerCase() || "jpg";
+  const uploadCategoryImage =
+    async (
+      file: File,
+      categoryId?: number
+    ) => {
+      const extension =
+        file.name
+          .split(".")
+          .pop()
+          ?.toLowerCase() ||
+        "jpg";
 
-    const prefix =
-      categoryId !== undefined
-        ? `category-${categoryId}`
-        : "category";
+      const prefix =
+        categoryId !== undefined
+          ? `category-${categoryId}`
+          : "category";
 
-    const fileName =
-      `${prefix}-${Date.now()}-${Math.random()
-        .toString(36)
-        .substring(2, 8)}.${extension}`;
+      const fileName =
+        `${prefix}-${Date.now()}-${Math.random()
+          .toString(36)
+          .substring(2, 8)}.${extension}`;
 
-    const { error } =
-      await supabase.storage
-        .from("menu-images")
-        .upload(
-          fileName,
-          file,
-          {
-            cacheControl: "3600",
-            upsert: false,
-          }
-        );
+      const { error } =
+        await supabase.storage
+          .from("menu-images")
+          .upload(
+            fileName,
+            file,
+            {
+              cacheControl:
+                "3600",
+              upsert: false,
+            }
+          );
 
-    if (error) {
-      throw error;
-    }
+      if (error) {
+        throw error;
+      }
 
-    const { data } =
-      supabase.storage
-        .from("menu-images")
-        .getPublicUrl(fileName);
+      const { data } =
+        supabase.storage
+          .from("menu-images")
+          .getPublicUrl(
+            fileName
+          );
 
-    return data.publicUrl;
-  };
+      return data.publicUrl;
+    };
 
   /* =========================================================
      YENİ KATEGORİ EKLE
@@ -571,7 +1031,9 @@ export default function YonetimPage() {
       newCategoryName.trim();
 
     if (!name) {
-      alert("Lütfen kategori adı girin.");
+      alert(
+        "Lütfen kategori adı girin."
+      );
       return;
     }
 
@@ -593,7 +1055,9 @@ export default function YonetimPage() {
       return;
     }
 
-    setSavingCategory(true);
+    setSavingCategory(
+      true
+    );
 
     try {
       let imageUrl = "";
@@ -661,7 +1125,9 @@ export default function YonetimPage() {
         }`
       );
     } finally {
-      setSavingCategory(false);
+      setSavingCategory(
+        false
+      );
     }
   };
 
@@ -680,7 +1146,9 @@ export default function YonetimPage() {
       category.name
     );
 
-    setEditingCategoryImage(null);
+    setEditingCategoryImage(
+      null
+    );
   };
 
   /* =========================================================
@@ -688,9 +1156,13 @@ export default function YonetimPage() {
      ========================================================= */
 
   const cancelEditCategory = () => {
-    setEditingCategoryId(null);
+    setEditingCategoryId(
+      null
+    );
     setEditingCategoryName("");
-    setEditingCategoryImage(null);
+    setEditingCategoryImage(
+      null
+    );
   };
 
   /* =========================================================
@@ -698,7 +1170,10 @@ export default function YonetimPage() {
      ========================================================= */
 
   const saveCategory = async () => {
-    if (editingCategoryId === null) {
+    if (
+      editingCategoryId ===
+      null
+    ) {
       return;
     }
 
@@ -746,15 +1221,21 @@ export default function YonetimPage() {
       return;
     }
 
-    setSavingCategory(true);
+    setSavingCategory(
+      true
+    );
 
-    let productsRenamed = false;
+    let productsRenamed =
+      false;
 
     try {
       let imageUrl =
-        currentCategory.image || "";
+        currentCategory.image ||
+        "";
 
-      if (editingCategoryImage) {
+      if (
+        editingCategoryImage
+      ) {
         imageUrl =
           await uploadCategoryImage(
             editingCategoryImage,
@@ -763,16 +1244,18 @@ export default function YonetimPage() {
       }
 
       if (oldName !== name) {
-        const { error: productsError } =
-          await supabase
-            .from("menu_items")
-            .update({
-              category: name,
-            })
-            .eq(
-              "category",
-              oldName
-            );
+        const {
+          error:
+            productsError,
+        } = await supabase
+          .from("menu_items")
+          .update({
+            category: name,
+          })
+          .eq(
+            "category",
+            oldName
+          );
 
         if (productsError) {
           console.error(
@@ -787,7 +1270,8 @@ export default function YonetimPage() {
           return;
         }
 
-        productsRenamed = true;
+        productsRenamed =
+          true;
       }
 
       const { error } =
@@ -812,7 +1296,8 @@ export default function YonetimPage() {
           await supabase
             .from("menu_items")
             .update({
-              category: oldName,
+              category:
+                oldName,
             })
             .eq(
               "category",
@@ -828,14 +1313,23 @@ export default function YonetimPage() {
       }
 
       if (
-        selectedCategory === oldName
+        selectedCategory ===
+        oldName
       ) {
-        setSelectedCategory(name);
+        setSelectedCategory(
+          name
+        );
       }
 
-      setEditingCategoryId(null);
-      setEditingCategoryName("");
-      setEditingCategoryImage(null);
+      setEditingCategoryId(
+        null
+      );
+      setEditingCategoryName(
+        ""
+      );
+      setEditingCategoryImage(
+        null
+      );
 
       await Promise.all([
         fetchCategories(),
@@ -858,7 +1352,9 @@ export default function YonetimPage() {
         }`
       );
     } finally {
-      setSavingCategory(false);
+      setSavingCategory(
+        false
+      );
     }
   };
 
@@ -869,17 +1365,19 @@ export default function YonetimPage() {
   const deleteCategory = async (
     category: Category
   ) => {
-    const { count, error: countError } =
-      await supabase
-        .from("menu_items")
-        .select("id", {
-          count: "exact",
-          head: true,
-        })
-        .eq(
-          "category",
-          category.name
-        );
+    const {
+      count,
+      error: countError,
+    } = await supabase
+      .from("menu_items")
+      .select("id", {
+        count: "exact",
+        head: true,
+      })
+      .eq(
+        "category",
+        category.name
+      );
 
     if (countError) {
       alert(
@@ -953,7 +1451,9 @@ export default function YonetimPage() {
         `"${category.name}" kategorisi silindi.`
       );
     } finally {
-      setDeletingCategoryId(null);
+      setDeletingCategoryId(
+        null
+      );
     }
   };
 
@@ -964,13 +1464,15 @@ export default function YonetimPage() {
   const fetchMenu = async () => {
     setLoading(true);
 
-    const { data, error } =
-      await supabase
-        .from("menu_items")
-        .select("*")
-        .order("id", {
-          ascending: true,
-        });
+    const {
+      data,
+      error,
+    } = await supabase
+      .from("menu_items")
+      .select("*")
+      .order("id", {
+        ascending: true,
+      });
 
     if (error) {
       console.error(
@@ -990,7 +1492,8 @@ export default function YonetimPage() {
       (data || []).map(
         (item: any) => ({
           id: Number(item.id),
-          name: item.name || "",
+          name:
+            item.name || "",
           description:
             item.description || "",
           price: Number(
@@ -1032,7 +1535,8 @@ export default function YonetimPage() {
             item.id === id
               ? {
                   ...item,
-                  [field]: value,
+                  [field]:
+                    value,
                 }
               : item
         )
@@ -1071,8 +1575,10 @@ export default function YonetimPage() {
     setSearch("");
 
     if (
-      selectedCategory === "Tümü" &&
-      availableCategories.length > 0
+      selectedCategory ===
+        "Tümü" &&
+      availableCategories.length >
+        0
     ) {
       setSelectedCategory(
         availableCategories[0]
@@ -1144,7 +1650,9 @@ export default function YonetimPage() {
     ] = file;
 
     const previewUrl =
-      URL.createObjectURL(file);
+      URL.createObjectURL(
+        file
+      );
 
     previewUrls.current[
       item.id
@@ -1195,7 +1703,8 @@ export default function YonetimPage() {
           fileName,
           file,
           {
-            cacheControl: "3600",
+            cacheControl:
+              "3600",
             upsert: false,
           }
         );
@@ -1237,9 +1746,7 @@ export default function YonetimPage() {
       return;
     }
 
-    if (
-      !item.category
-    ) {
+    if (!item.category) {
       alert(
         "Lütfen kategori seçin."
       );
@@ -1260,8 +1767,10 @@ export default function YonetimPage() {
     try {
       if (isNew) {
         const {
-          data: insertedData,
-          error: insertError,
+          data:
+            insertedData,
+          error:
+            insertError,
         } = await supabase
           .from("menu_items")
           .insert({
@@ -1273,8 +1782,9 @@ export default function YonetimPage() {
               "",
 
             price:
-              Number(item.price) ||
-              0,
+              Number(
+                item.price
+              ) || 0,
 
             category:
               item.category,
@@ -1323,7 +1833,8 @@ export default function YonetimPage() {
               );
 
             const {
-              data: updatedData,
+              data:
+                updatedData,
               error:
                 imageUpdateError,
             } =
@@ -1683,7 +2194,9 @@ export default function YonetimPage() {
                 <button
                   type="button"
                   onClick={() =>
-                    setShowSettings(true)
+                    setShowSettings(
+                      true
+                    )
                   }
                   aria-label="Ayarlar"
                   title="Ayarlar"
@@ -1695,8 +2208,7 @@ export default function YonetimPage() {
               </div>
 
               <p className="mt-0.5 text-[11px] text-gray-400">
-                Menü ürünlerini ve kategorileri
-                buradan yönetin.
+                Menü ürünlerini, kategorileri ve raporları buradan yönetin.
               </p>
 
               <div className="mt-2 flex flex-wrap gap-1.5">
@@ -1717,7 +2229,9 @@ export default function YonetimPage() {
 
                 <button
                   onClick={() => {
-                    setAdminSection("menu");
+                    setAdminSection(
+                      "menu"
+                    );
 
                     if (
                       selectedCategory ===
@@ -1916,7 +2430,9 @@ export default function YonetimPage() {
 
               <button
                 type="button"
-                onClick={changePassword}
+                onClick={
+                  changePassword
+                }
                 disabled={
                   changingPassword
                 }
@@ -1942,9 +2458,9 @@ export default function YonetimPage() {
 
         <div className="rounded-2xl bg-white p-3 text-gray-900 shadow-xl">
 
-          {/* ANA İKİ BUTON */}
+          {/* ANA BUTONLAR */}
 
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-3 gap-2">
 
             <button
               type="button"
@@ -1957,14 +2473,14 @@ export default function YonetimPage() {
                 );
                 setSearch("");
               }}
-              className={`rounded-xl px-3 py-2.5 text-sm font-bold transition active:scale-[0.98] ${
+              className={`rounded-xl px-2 py-2.5 text-xs font-bold transition active:scale-[0.98] ${
                 adminSection ===
                 "categories"
                   ? "bg-[#061b3d] text-white shadow"
                   : "bg-gray-100 text-gray-700 hover:bg-gray-200"
               }`}
             >
-              📂 Kategorileri Düzenle
+              📂 Kategoriler
             </button>
 
             <button
@@ -1978,14 +2494,35 @@ export default function YonetimPage() {
                 );
                 setSearch("");
               }}
-              className={`rounded-xl px-3 py-2.5 text-sm font-bold transition active:scale-[0.98] ${
+              className={`rounded-xl px-2 py-2.5 text-xs font-bold transition active:scale-[0.98] ${
                 adminSection ===
                 "menu"
                   ? "bg-[#061b3d] text-white shadow"
                   : "bg-gray-100 text-gray-700 hover:bg-gray-200"
               }`}
             >
-              🍽️ Menüyü Düzenle
+              🍽️ Menü
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setAdminSection(
+                  "reports"
+                );
+                setSelectedCategory(
+                  "Tümü"
+                );
+                setSearch("");
+              }}
+              className={`rounded-xl px-2 py-2.5 text-xs font-bold transition active:scale-[0.98] ${
+                adminSection ===
+                "reports"
+                  ? "bg-[#061b3d] text-white shadow"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              📊 Raporlar
             </button>
 
           </div>
@@ -2022,8 +2559,6 @@ export default function YonetimPage() {
 
               </div>
 
-              {/* YENİ KATEGORİ */}
-
               <div className="mt-3 rounded-xl border border-dashed border-[#061b3d]/20 bg-gray-50 p-2.5">
 
                 <h3 className="text-xs font-bold text-[#061b3d]">
@@ -2034,7 +2569,9 @@ export default function YonetimPage() {
 
                   <input
                     type="text"
-                    value={newCategoryName}
+                    value={
+                      newCategoryName
+                    }
                     onChange={(e) =>
                       setNewCategoryName(
                         e.target.value
@@ -2067,7 +2604,9 @@ export default function YonetimPage() {
 
                   <button
                     type="button"
-                    onClick={addCategory}
+                    onClick={
+                      addCategory
+                    }
                     disabled={
                       savingCategory
                     }
@@ -2084,13 +2623,13 @@ export default function YonetimPage() {
                   <p className="mt-2 rounded-lg bg-blue-50 p-2 text-[10px] font-semibold text-blue-700">
                     📷 Görsel seçildi:
                     {" "}
-                    {newCategoryImage.name}
+                    {
+                      newCategoryImage.name
+                    }
                   </p>
                 )}
 
               </div>
-
-              {/* KATEGORİ KARTLARI */}
 
               <div className="mt-3">
 
@@ -2100,7 +2639,8 @@ export default function YonetimPage() {
                     ⏳ Kategoriler yükleniyor...
                   </div>
 
-                ) : categoryList.length === 0 ? (
+                ) : categoryList.length ===
+                  0 ? (
 
                   <div className="rounded-xl bg-gray-50 p-4 text-center text-xs text-gray-500">
                     Henüz kategori bulunmuyor.
@@ -2111,7 +2651,10 @@ export default function YonetimPage() {
                   <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
 
                     {categoryList.map(
-                      (category, categoryIndex) => {
+                      (
+                        category,
+                        categoryIndex
+                      ) => {
 
                         const isEditing =
                           editingCategoryId ===
@@ -2128,8 +2671,6 @@ export default function YonetimPage() {
                             }
                             className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm"
                           >
-
-                            {/* KATEGORİ GÖRSELİ */}
 
                             <div className="relative h-20 bg-gray-100">
 
@@ -2154,7 +2695,11 @@ export default function YonetimPage() {
                               )}
 
                               <div className="absolute left-1.5 top-1.5 rounded-full bg-black/60 px-1.5 py-0.5 text-[9px] font-bold text-white">
-                                #{categoryIndex + 1}
+                                #
+                                {
+                                  categoryIndex +
+                                  1
+                                }
                               </div>
 
                             </div>
@@ -2176,15 +2721,15 @@ export default function YonetimPage() {
                                       </h4>
 
                                       <p className="mt-0.5 text-[10px] text-gray-500">
-                                        {categoryProductCount(
-                                          category.name
-                                        )}{" "}
+                                        {
+                                          categoryProductCount(
+                                            category.name
+                                          )
+                                        }{" "}
                                         ürün
                                       </p>
 
                                     </div>
-
-                                    {/* SIRALAMA BUTONLARI */}
 
                                     <div className="flex shrink-0 gap-1">
 
@@ -2267,10 +2812,12 @@ export default function YonetimPage() {
                                       }
                                       className="rounded-lg border border-red-500 bg-white px-2.5 py-1.5 text-[10px] font-bold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 active:scale-95"
                                     >
-                                      {deletingCategoryId ===
-                                      category.id
-                                        ? "⏳"
-                                        : "🗑️"}
+                                      {
+                                        deletingCategoryId ===
+                                        category.id
+                                          ? "⏳"
+                                          : "🗑️"
+                                      }
                                     </button>
 
                                   </div>
@@ -2413,8 +2960,6 @@ export default function YonetimPage() {
 
                   </div>
 
-                  {/* ARAMA */}
-
                   <div className="mt-3">
 
                     <input
@@ -2430,8 +2975,6 @@ export default function YonetimPage() {
                     />
 
                   </div>
-
-                  {/* KATEGORİLER */}
 
                   <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
 
@@ -2454,13 +2997,17 @@ export default function YonetimPage() {
                           <div className="flex items-center justify-between gap-2">
 
                             <span className="text-xs font-bold text-[#061b3d]">
-                              {category}
+                              {
+                                category
+                              }
                             </span>
 
                             <span className="rounded-full bg-[#061b3d] px-1.5 py-0.5 text-[9px] font-bold text-white">
-                              {categoryProductCount(
-                                category
-                              )}
+                              {
+                                categoryProductCount(
+                                  category
+                                )
+                              }
                             </span>
 
                           </div>
@@ -2490,8 +3037,6 @@ export default function YonetimPage() {
 
                 <>
 
-                  {/* KATEGORİ BAŞLIĞI */}
-
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
 
                     <div className="flex items-center gap-2">
@@ -2512,7 +3057,9 @@ export default function YonetimPage() {
                       <div>
 
                         <h2 className="text-sm font-bold text-[#061b3d]">
-                          {selectedCategory}
+                          {
+                            selectedCategory
+                          }
                         </h2>
 
                         <p className="text-[10px] text-gray-500">
@@ -2532,7 +3079,9 @@ export default function YonetimPage() {
 
                       <button
                         type="button"
-                        onClick={addNewItem}
+                        onClick={
+                          addNewItem
+                        }
                         className="rounded-lg bg-[#e8c866] px-3 py-1.5 text-[10px] font-bold text-[#061b3d] transition hover:bg-[#f1d477] active:scale-95"
                       >
                         ➕ Yeni Ürün
@@ -2552,8 +3101,6 @@ export default function YonetimPage() {
                     </div>
 
                   </div>
-
-                  {/* ARAMA */}
 
                   <div className="mt-3">
 
@@ -2578,6 +3125,527 @@ export default function YonetimPage() {
             </div>
           )}
 
+          {/* =================================================
+              RAPORLAR
+              ================================================= */}
+
+          {adminSection ===
+            "reports" && (
+
+            <div className="mt-3 border-t border-gray-200 pt-3">
+
+              {/* RAPOR BAŞLIĞI */}
+
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+
+                <div>
+
+                  <h2 className="text-base font-bold text-[#061b3d]">
+                    📊 RAPORLAR —{" "}
+                    {getCurrentMonthName()}{" "}
+                    {new Date().getFullYear()}
+                  </h2>
+
+                  <p className="mt-0.5 text-[10px] text-gray-500">
+                    Yalnızca içinde bulunduğunuz
+                    ayın satışları gösterilir.
+                  </p>
+
+                </div>
+
+                <button
+                  type="button"
+                  onClick={
+                    fetchReports
+                  }
+                  disabled={
+                    reportLoading
+                  }
+                  className="rounded-lg bg-[#061b3d] px-3 py-1.5 text-[10px] font-bold text-white transition hover:bg-[#0b2d62] disabled:opacity-50 active:scale-95"
+                >
+                  {reportLoading
+                    ? "⏳"
+                    : "🔄 Yenile"}
+                </button>
+
+              </div>
+
+              {reportLoading ? (
+
+                <div className="mt-3 rounded-xl bg-gray-50 p-8 text-center">
+
+                  <div className="text-3xl">
+                    ⏳
+                  </div>
+
+                  <p className="mt-2 text-xs font-semibold text-gray-500">
+                    Raporlar yükleniyor...
+                  </p>
+
+                </div>
+
+              ) : (
+
+                <>
+
+                  {/* =================================================
+                      AYLIK ÖZET
+                      ================================================= */}
+
+                  <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+
+                    <div className="rounded-xl bg-[#061b3d] p-3 text-white">
+
+                      <p className="text-[10px] font-semibold text-gray-300">
+                        💰 AYLIK CİRO
+                      </p>
+
+                      <p className="mt-1 text-xl font-bold text-[#e8c866]">
+                        {formatCurrency(
+                          monthlyReport?.total_revenue ||
+                            0
+                        )}
+                      </p>
+
+                    </div>
+
+                    <div className="rounded-xl bg-gray-100 p-3">
+
+                      <p className="text-[10px] font-semibold text-gray-500">
+                        🧾 TOPLAM SİPARİŞ
+                      </p>
+
+                      <p className="mt-1 text-xl font-bold text-[#061b3d]">
+                        {monthlyReport?.total_orders ||
+                          0}
+                      </p>
+
+                      <p className="text-[9px] text-gray-500">
+                        Bu ay teslim edilen siparişler
+                      </p>
+
+                    </div>
+
+                    <div className="rounded-xl bg-gray-100 p-3">
+
+                      <p className="text-[10px] font-semibold text-gray-500">
+                        🍽️ SATILAN TOPLAM ÜRÜN
+                      </p>
+
+                      <p className="mt-1 text-xl font-bold text-[#061b3d]">
+                        {monthlyReport?.total_items ||
+                          0}
+                      </p>
+
+                      <p className="text-[9px] text-gray-500">
+                        Bu ay satılan toplam adet
+                      </p>
+
+                    </div>
+
+                  </div>
+
+                  {/* =================================================
+                      GÜNLÜK RAPOR
+                      ================================================= */}
+
+                  <div className="mt-4">
+
+                    <div className="flex items-center justify-between">
+
+                      <div>
+
+                        <h3 className="text-sm font-bold text-[#061b3d]">
+                          📅 Günlük Rapor
+                        </h3>
+
+                        <p className="mt-0.5 text-[10px] text-gray-500">
+                          Bir güne tıklayarak ürün detaylarını görebilirsiniz.
+                        </p>
+
+                      </div>
+
+                      <div className="rounded-full bg-gray-100 px-2.5 py-1 text-[9px] font-bold text-gray-600">
+                        {dailyReports.length} gün satış
+                      </div>
+
+                    </div>
+
+                    {dailyReports.length ===
+                    0 ? (
+
+                      <div className="mt-2 rounded-xl bg-gray-50 p-5 text-center">
+
+                        <div className="text-3xl">
+                          📅
+                        </div>
+
+                        <p className="mt-2 text-xs font-semibold text-gray-500">
+                          Bu ay henüz satış bulunmuyor.
+                        </p>
+
+                      </div>
+
+                    ) : (
+
+                      <div className="mt-2 space-y-2">
+
+                        {dailyReports.map(
+                          (report) => {
+
+                            const isSelected =
+                              selectedReportDate ===
+                              report.report_date;
+
+                            return (
+                              <div
+                                key={
+                                  report.id
+                                }
+                                className={`overflow-hidden rounded-xl border transition ${
+                                  isSelected
+                                    ? "border-[#061b3d] shadow-md"
+                                    : "border-gray-200"
+                                }`}
+                              >
+
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    openDailyReport(
+                                      report.report_date
+                                    )
+                                  }
+                                  className={`w-full p-3 text-left transition ${
+                                    isSelected
+                                      ? "bg-blue-50"
+                                      : "bg-white hover:bg-gray-50"
+                                  }`}
+                                >
+
+                                  <div className="flex items-center justify-between gap-3">
+
+                                    <div className="min-w-0">
+
+                                      <p className="text-xs font-bold text-[#061b3d]">
+                                        📅{" "}
+                                        {formatReportDate(
+                                          report.report_date
+                                        )}
+                                      </p>
+
+                                      <p className="mt-0.5 text-[9px] text-gray-500">
+                                        {report.total_orders} sipariş •{" "}
+                                        {report.total_items} ürün
+                                      </p>
+
+                                    </div>
+
+                                    <div className="flex items-center gap-3">
+
+                                      <div className="text-right">
+
+                                        <p className="text-[9px] font-semibold text-gray-400">
+                                          GÜNLÜK CİRO
+                                        </p>
+
+                                        <p className="text-sm font-bold text-green-700">
+                                          {formatCurrency(
+                                            report.total_revenue
+                                          )}
+                                        </p>
+
+                                      </div>
+
+                                      <span className="text-lg text-gray-400">
+                                        {isSelected
+                                          ? "⌃"
+                                          : "⌄"}
+                                      </span>
+
+                                    </div>
+
+                                  </div>
+
+                                </button>
+
+                                {/* =================================================
+                                    GÜN DETAYI
+                                    ================================================= */}
+
+                                {isSelected && (
+
+                                  <div className="border-t border-gray-200 bg-gray-50 p-3">
+
+                                    <div className="mb-2 flex items-center justify-between">
+
+                                      <div>
+
+                                        <h4 className="text-xs font-bold text-[#061b3d]">
+                                          🍽️{" "}
+                                          {formatReportDate(
+                                            report.report_date
+                                          )}{" "}
+                                          — Ürün Detayı
+                                        </h4>
+
+                                        <p className="mt-0.5 text-[9px] text-gray-500">
+                                          O gün satılan ürünlerin tamamı
+                                        </p>
+
+                                      </div>
+
+                                      <div className="text-right">
+
+                                        <p className="text-[9px] text-gray-400">
+                                          TOPLAM
+                                        </p>
+
+                                        <p className="text-xs font-bold text-green-700">
+                                          {formatCurrency(
+                                            report.total_revenue
+                                          )}
+                                        </p>
+
+                                      </div>
+
+                                    </div>
+
+                                    {dailyDetailLoading ? (
+
+                                      <div className="rounded-lg bg-white p-5 text-center">
+
+                                        <div className="text-xl">
+                                          ⏳
+                                        </div>
+
+                                        <p className="mt-1 text-[10px] text-gray-500">
+                                          Ürün detayları yükleniyor...
+                                        </p>
+
+                                      </div>
+
+                                    ) : dailyProductReports.length ===
+                                      0 ? (
+
+                                      <div className="rounded-lg bg-white p-4 text-center text-[10px] text-gray-500">
+                                        Bu gün için ürün detayı bulunamadı.
+                                      </div>
+
+                                    ) : (
+
+                                      <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+
+                                        <div className="grid grid-cols-[1fr_auto_auto] gap-2 border-b border-gray-200 bg-gray-100 px-3 py-2 text-[9px] font-bold text-gray-500">
+
+                                          <div>
+                                            ÜRÜN
+                                          </div>
+
+                                          <div className="text-center">
+                                            ADET
+                                          </div>
+
+                                          <div className="text-right">
+                                            TUTAR
+                                          </div>
+
+                                        </div>
+
+                                        {dailyProductReports.map(
+                                          (
+                                            product
+                                          ) => (
+
+                                            <div
+                                              key={
+                                                product.id
+                                              }
+                                              className="grid grid-cols-[1fr_auto_auto] gap-2 border-b border-gray-100 px-3 py-2 last:border-b-0"
+                                            >
+
+                                              <div className="min-w-0">
+
+                                                <p className="truncate text-[11px] font-bold text-gray-800">
+                                                  {
+                                                    product.product_name
+                                                  }
+                                                </p>
+
+                                              </div>
+
+                                              <div className="min-w-[45px] text-center">
+
+                                                <span className="inline-flex min-w-[28px] items-center justify-center rounded-full bg-[#061b3d] px-2 py-0.5 text-[9px] font-bold text-white">
+                                                  {
+                                                    product.quantity
+                                                  }
+                                                </span>
+
+                                              </div>
+
+                                              <div className="min-w-[85px] text-right text-[10px] font-bold text-green-700">
+                                                {formatCurrency(
+                                                  product.revenue
+                                                )}
+                                              </div>
+
+                                            </div>
+
+                                          )
+                                        )}
+
+                                        <div className="grid grid-cols-[1fr_auto_auto] gap-2 bg-[#061b3d] px-3 py-2 text-white">
+
+                                          <div className="text-[10px] font-bold">
+                                            GÜN TOPLAMI
+                                          </div>
+
+                                          <div className="text-center text-[10px] font-bold">
+                                            {
+                                              report.total_items
+                                            }
+                                          </div>
+
+                                          <div className="text-right text-[10px] font-bold text-[#e8c866]">
+                                            {formatCurrency(
+                                              report.total_revenue
+                                            )}
+                                          </div>
+
+                                        </div>
+
+                                      </div>
+
+                                    )}
+
+                                  </div>
+
+                                )}
+
+                              </div>
+                            );
+                          }
+                        )}
+
+                      </div>
+
+                    )}
+
+                  </div>
+
+                  {/* =================================================
+                      EN ÇOK SATAN ÜRÜNLER
+                      ================================================= */}
+
+                  <div className="mt-4">
+
+                    <div className="flex items-center justify-between">
+
+                      <div>
+
+                        <h3 className="text-sm font-bold text-[#061b3d]">
+                          🏆 En Çok Satan Ürünler
+                        </h3>
+
+                        <p className="mt-0.5 text-[10px] text-gray-500">
+                          {getCurrentMonthName()} ayındaki toplam satışlar
+                        </p>
+
+                      </div>
+
+                      <div className="rounded-full bg-gray-100 px-2.5 py-1 text-[9px] font-bold text-gray-600">
+                        {monthlyProductReports.length} ürün
+                      </div>
+
+                    </div>
+
+                    {monthlyProductReports.length ===
+                    0 ? (
+
+                      <div className="mt-2 rounded-xl bg-gray-50 p-5 text-center">
+
+                        <div className="text-3xl">
+                          🏆
+                        </div>
+
+                        <p className="mt-2 text-xs font-semibold text-gray-500">
+                          Bu ay henüz ürün satışı bulunmuyor.
+                        </p>
+
+                      </div>
+
+                    ) : (
+
+                      <div className="mt-2 overflow-hidden rounded-xl border border-gray-200 bg-white">
+
+                        {monthlyProductReports.map(
+                          (
+                            product,
+                            index
+                          ) => (
+
+                            <div
+                              key={
+                                product.id
+                              }
+                              className="flex items-center gap-3 border-b border-gray-100 px-3 py-2.5 last:border-b-0"
+                            >
+
+                              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#061b3d] text-[10px] font-bold text-[#e8c866]">
+                                {index +
+                                  1}
+                              </div>
+
+                              <div className="min-w-0 flex-1">
+
+                                <p className="truncate text-xs font-bold text-gray-800">
+                                  {
+                                    product.product_name
+                                  }
+                                </p>
+
+                                <p className="mt-0.5 text-[9px] text-gray-500">
+                                  {formatCurrency(
+                                    product.revenue
+                                  )}{" "}
+                                  ciro
+                                </p>
+
+                              </div>
+
+                              <div className="text-right">
+
+                                <p className="text-sm font-bold text-[#061b3d]">
+                                  {
+                                    product.quantity
+                                  }
+                                </p>
+
+                                <p className="text-[8px] text-gray-400">
+                                  adet
+                                </p>
+
+                              </div>
+
+                            </div>
+
+                          )
+                        )}
+
+                      </div>
+
+                    )}
+
+                  </div>
+
+                </>
+
+              )}
+
+            </div>
+          )}
+
           {/* ALT BİLGİ / ÇIKIŞ */}
 
           <div className="mt-3 flex items-center justify-between border-t border-gray-200 pt-3">
@@ -2588,7 +3656,9 @@ export default function YonetimPage() {
 
             <button
               type="button"
-              onClick={handleLogout}
+              onClick={
+                handleLogout
+              }
               className="rounded-lg bg-red-600 px-3 py-1.5 text-[10px] font-bold text-white shadow transition hover:bg-red-700 active:scale-95"
             >
               🚪 Çıkış Yap
@@ -2604,8 +3674,10 @@ export default function YonetimPage() {
           ÜRÜNLER
           ===================================================== */}
 
-      {adminSection === "menu" &&
-        selectedCategory !== "Tümü" && (
+      {adminSection ===
+        "menu" &&
+        selectedCategory !==
+          "Tümü" && (
 
         <section className="mx-auto max-w-7xl px-4 py-3">
 
@@ -2623,7 +3695,8 @@ export default function YonetimPage() {
 
             </div>
 
-          ) : selectedCategoryItems.length === 0 ? (
+          ) : selectedCategoryItems.length ===
+            0 ? (
 
             <div className="rounded-2xl bg-white p-8 text-center text-gray-700 shadow-xl">
 
@@ -2641,7 +3714,9 @@ export default function YonetimPage() {
               </p>
 
               <button
-                onClick={addNewItem}
+                onClick={
+                  addNewItem
+                }
                 className="mt-3 rounded-lg bg-[#061b3d] px-4 py-2 text-xs font-bold text-white"
               >
                 ➕ Yeni Ürün Ekle
@@ -2657,24 +3732,26 @@ export default function YonetimPage() {
                 (item) => (
 
                   <div
-                    key={item.id}
+                    key={
+                      item.id
+                    }
                     className="overflow-hidden rounded-xl bg-white text-gray-900 shadow-md"
                   >
-
-                    {/* FOTOĞRAF */}
 
                     <div className="relative h-24 bg-gray-100">
 
                       {item.image ? (
 
                         <img
-  src={item.image}
-  alt={
-    item.name ||
-    "Ürün"
-  }
-  className="h-full w-full object-contain p-1"
-/>
+                          src={
+                            item.image
+                          }
+                          alt={
+                            item.name ||
+                            "Ürün"
+                          }
+                          className="h-full w-full object-contain p-1"
+                        />
 
                       ) : (
 
@@ -2696,7 +3773,8 @@ export default function YonetimPage() {
                           : "PASİF"}
                       </div>
 
-                      {item.id < 0 && (
+                      {item.id <
+                        0 && (
 
                         <div className="absolute left-1.5 top-1.5 rounded-full bg-[#e8c866] px-2 py-0.5 text-[9px] font-bold text-[#061b3d] shadow">
                           YENİ
@@ -2706,24 +3784,22 @@ export default function YonetimPage() {
 
                     </div>
 
-                    {/* FORM */}
-
                     <div className="p-3">
-
-                      {/* ID + AKTİF/PASİF */}
 
                       <div className="mb-2 flex items-center justify-between gap-2">
 
                         <div>
 
                           <p className="text-[9px] font-semibold text-gray-400">
-                            {item.id < 0
+                            {item.id <
+                            0
                               ? "DURUM"
                               : "ÜRÜN ID"}
                           </p>
 
                           <p className="text-[10px] font-bold text-gray-700">
-                            {item.id < 0
+                            {item.id <
+                            0
                               ? "Yeni ürün"
                               : `#${item.id}`}
                           </p>
@@ -2751,8 +3827,6 @@ export default function YonetimPage() {
 
                       </div>
 
-                      {/* ÜRÜN ADI */}
-
                       <div className="mb-2">
 
                         <label className="mb-1 block text-[10px] font-bold">
@@ -2776,8 +3850,6 @@ export default function YonetimPage() {
                         />
 
                       </div>
-
-                      {/* AÇIKLAMA */}
 
                       <div className="mb-2">
 
@@ -2803,8 +3875,6 @@ export default function YonetimPage() {
                         />
 
                       </div>
-
-                      {/* FİYAT + KATEGORİ */}
 
                       <div className="grid gap-2 sm:grid-cols-2">
 
@@ -2897,8 +3967,6 @@ export default function YonetimPage() {
 
                       </div>
 
-                      {/* FOTOĞRAF */}
-
                       <div className="mt-2 rounded-lg border border-dashed border-gray-300 bg-gray-50 p-2">
 
                         <label className="mb-1 block text-[10px] font-bold text-gray-900">
@@ -2910,7 +3978,9 @@ export default function YonetimPage() {
                         </p>
 
                         <input
-                          ref={(element) => {
+                          ref={(
+                            element
+                          ) => {
                             fileInputRefs.current[
                               item.id
                             ] =
@@ -2961,8 +4031,6 @@ export default function YonetimPage() {
 
                       </div>
 
-                      {/* KAYDET */}
-
                       <button
                         onClick={() =>
                           saveItem(
@@ -2984,8 +4052,6 @@ export default function YonetimPage() {
                           ? "⏳ Kaydediliyor..."
                           : "💾 Kaydet"}
                       </button>
-
-                      {/* SİL */}
 
                       <button
                         onClick={() =>
@@ -3027,8 +4093,10 @@ export default function YonetimPage() {
           MENÜDE KATEGORİ SEÇİLMEDİ
           ===================================================== */}
 
-      {adminSection === "menu" &&
-        selectedCategory === "Tümü" && (
+      {adminSection ===
+        "menu" &&
+        selectedCategory ===
+          "Tümü" && (
 
         <section className="mx-auto max-w-7xl px-4 py-3">
 
