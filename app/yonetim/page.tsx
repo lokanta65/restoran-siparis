@@ -3132,7 +3132,8 @@ console.log("dailyError:", dailyError);
     RAPORLAR
     ========================================================= */}
 
-<div className="mt-4 rounded-xl border border-gray-200 bg-white p-3">
+{adminSection === "reports" && (
+  <div className="mt-4 rounded-xl border border-gray-200 bg-white p-3">
 
   {/* BAŞLIK */}
   <div className="flex items-center justify-between gap-2">
@@ -3713,6 +3714,7 @@ console.log("dailyError:", dailyError);
   )}
 
 </div>
+)}
           {/* ALT BİLGİ / ÇIKIŞ */}
 
           <div className="mt-3 flex items-center justify-between border-t border-gray-200 pt-3">
