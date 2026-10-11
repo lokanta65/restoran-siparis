@@ -25,6 +25,18 @@ type Category = {
   image: string;
   sort_order: number;
 };
+type ReportOrder = {
+  id: number | string;
+  created_at: string;
+  total: number | string;
+  status: string;
+  items: {
+    id?: number | string;
+    name?: string;
+    price?: number | string;
+    quantity?: number | string;
+  }[] | null;
+};
 
 type DailyReport = {
   id: number;
@@ -42,21 +54,7 @@ type DailyProductReport = {
   revenue: number;
 };
 
-type MonthlyReport = {
-  id: number;
-  report_month: string;
-  total_revenue: number;
-  total_orders: number;
-  total_items: number;
-};
 
-type MonthlyProductReport = {
-  id: number;
-  report_month: string;
-  product_name: string;
-  quantity: number;
-  revenue: number;
-};
 
 const fallbackCategories = [
   "Kahvaltı",
@@ -108,6 +106,8 @@ export default function YonetimPage() {
 
   const [adminSection, setAdminSection] =
     useState<"categories" | "menu" | "reports">("menu");
+    
+  const [reportOrders, setReportOrders] = useState<ReportOrder[]>([]);
 
   /* =========================================================
      RAPOR STATE
@@ -115,12 +115,6 @@ export default function YonetimPage() {
 
   const [reportLoading, setReportLoading] =
     useState(false);
-
-  const [monthlyReport, setMonthlyReport] =
-    useState<MonthlyReport | null>(null);
-
-  const [monthlyProductReports, setMonthlyProductReports] =
-    useState<MonthlyProductReport[]>([]);
 
   const [dailyReports, setDailyReports] =
     useState<DailyReport[]>([]);
@@ -133,7 +127,7 @@ export default function YonetimPage() {
 
   const [dailyDetailLoading, setDailyDetailLoading] =
     useState(false);
-  const [showMonthlyReport, setShowMonthlyReport] = useState(false);
+  
 
   /* =========================================================
      KATEGORİ STATE
@@ -329,23 +323,6 @@ export default function YonetimPage() {
 };
 
   /* =========================================================
-     AY ADI
-     ========================================================= */
-
-  const getCurrentMonthName = () => {
-    const now = new Date();
-
-    return new Intl.DateTimeFormat(
-      "tr-TR",
-      {
-        month: "long",
-      }
-    )
-      .format(now)
-      .toLocaleUpperCase("tr-TR");
-  };
-
-  /* =========================================================
      TARİH FORMATLA
      ========================================================= */
 
@@ -387,252 +364,270 @@ export default function YonetimPage() {
      RAPORLARI GETİR
      ========================================================= */
 
-  const fetchReports = async () => {
-    setReportLoading(true);
+  
 
-    try {
-      const currentMonth =
-        getCurrentMonthKey();
+const fetchReports = async () => {
+  setReportLoading(true);
 
-      /* -----------------------------------------------------
-         AYLIK RAPOR
-         ----------------------------------------------------- */
+  try {
+    const { data: settings, error: settingsError } =
+      await supabase
+        .from("report_settings")
+        .select("report_start_at")
+        .eq("id", true)
+        .single();
 
-      const {
-        data: monthlyData,
-        error: monthlyError,
-      } = await supabase
-        .from("monthly_report")
-        .select("*")
-        .eq(
-          "report_month",
-          currentMonth
-        )
-        .maybeSingle();
+    if (settingsError) throw settingsError;
 
-      if (monthlyError) {
-        throw monthlyError;
+    const reportStartAt = settings?.report_start_at;
+
+    if (!reportStartAt) {
+      throw new Error("Rapor başlangıç zamanı bulunamadı.");
+    }
+
+    const allOrders: ReportOrder[] = [];
+    const pageSize = 1000;
+    let offset = 0;
+
+    while (true) {
+      const { data, error } = await supabase
+        .from("orders")
+        .select("id, created_at, total, status, items")
+        .eq("status", "teslim edildi")
+        .gte("created_at", reportStartAt)
+        .order("created_at", { ascending: true })
+        .range(offset, offset + pageSize - 1);
+
+      if (error) throw error;
+
+      const page = (data || []) as ReportOrder[];
+      allOrders.push(...page);
+
+      if (page.length < pageSize) break;
+
+      offset += pageSize;
+    }
+
+    setReportOrders(allOrders);
+
+    const grouped = new Map<
+      string,
+      {
+        total_revenue: number;
+        total_orders: number;
+        total_items: number;
       }
+    >();
 
-      setMonthlyReport(
-        monthlyData
-          ? {
-              id: Number(monthlyData.id),
-              report_month:
-                monthlyData.report_month,
-              total_revenue:
-                Number(
-                  monthlyData.total_revenue
-                ) || 0,
-              total_orders:
-                Number(
-                  monthlyData.total_orders
-                ) || 0,
-              total_items:
-                Number(
-                  monthlyData.total_items
-                ) || 0,
-            }
-          : null
-      );
+    for (const order of allOrders) {
+      const date = new Date(order.created_at);
 
-      /* -----------------------------------------------------
-         AYLIK ÜRÜNLER
-         ----------------------------------------------------- */
+      const reportDate = [
+        date.getFullYear(),
+        String(date.getMonth() + 1).padStart(2, "0"),
+        String(date.getDate()).padStart(2, "0"),
+      ].join("-");
 
-      const {
-        data: monthlyProducts,
-        error:
-          monthlyProductsError,
-      } = await supabase
-        .from("monthly_product_report")
-        .select("*")
-        .eq(
-          "report_month",
-          currentMonth
-        )
-        .order("quantity", {
-          ascending: false,
-        });
+      const current = grouped.get(reportDate) || {
+        total_revenue: 0,
+        total_orders: 0,
+        total_items: 0,
+      };
 
-      if (monthlyProductsError) {
-        throw monthlyProductsError;
-      }
+      current.total_revenue += Number(order.total) || 0;
+      current.total_orders += 1;
 
-      setMonthlyProductReports(
-        (monthlyProducts || []).map(
-          (product: any) => ({
-            id: Number(product.id),
-            report_month:
-              product.report_month,
-            product_name:
-              product.product_name || "",
-            quantity:
-              Number(
-                product.quantity
-              ) || 0,
-            revenue:
-              Number(
-                product.revenue
-              ) || 0,
-          })
-        )
-      );
-
-      /* -----------------------------------------------------
-         GÜNLÜK RAPORLAR
-         ----------------------------------------------------- */
-
-      const firstDay =
-  `${currentMonth}-01`;
-
-      const now = new Date();
-
-      const lastDay = new Date(
-        now.getFullYear(),
-        now.getMonth() + 1,
-        0
-      );
-
-      const lastDayString =
-        `${lastDay.getFullYear()}-${String(
-          lastDay.getMonth() + 1
-        ).padStart(2, "0")}-${String(
-          lastDay.getDate()
-        ).padStart(2, "0")}`;
-
-      const {
-        data: dailyData,
-        error: dailyError,
-      } = await supabase
-        .from("daily_report")
-        .select("*")
-        .gte(
-          "report_date",
-          firstDay
-        )
-        .lte(
-          "report_date",
-          lastDayString
-        )
-        .order("report_date", {
-          ascending: false,
-        });
-
-      if (dailyError) {
-        throw dailyError;
-      }
-console.log("currentMonth:", currentMonth);
-console.log("dailyData:", dailyData);
-console.log("dailyError:", dailyError);
-      setDailyReports(
-        (dailyData || []).map(
-          (report: any) => ({
-            id: Number(report.id),
-            report_date:
-              report.report_date,
-            total_revenue:
-              Number(
-                report.total_revenue
-              ) || 0,
-            total_orders:
-              Number(
-                report.total_orders
-              ) || 0,
-            total_items:
-              Number(
-                report.total_items
-              ) || 0,
-          })
-        )
-      );
-
-      /* -----------------------------------------------------
-         AÇIK GÜNÜ YENİDEN GETİR
-         ----------------------------------------------------- */
-
-      if (selectedReportDate) {
-        await fetchDailyProductReport(
-          selectedReportDate
+      for (const item of order.items || []) {
+        current.total_items += Math.max(
+          0,
+          Number(item.quantity) || 1
         );
       }
-    } catch (error: any) {
-      console.error(
-        "Raporlar alınamadı:",
-        error
+
+      grouped.set(reportDate, current);
+    }
+
+    const reports: DailyReport[] = Array.from(
+      grouped.entries()
+    )
+      .map(([report_date, values], index) => ({
+        id: index + 1,
+        report_date,
+        ...values,
+      }))
+      .sort((a, b) =>
+        b.report_date.localeCompare(a.report_date)
       );
 
-      alert(
-        `Raporlar alınamadı.\n\n${
-          error?.message ||
-          "Bilinmeyen hata"
-        }`
+    setDailyReports(reports);
+
+    const nextDate =
+      selectedReportDate &&
+      reports.some(
+        (report) => report.report_date === selectedReportDate
+      )
+        ? selectedReportDate
+        : reports[0]?.report_date || "";
+
+    setSelectedReportDate(nextDate);
+
+    if (nextDate) {
+      const products = new Map<
+        string,
+        {
+          id: number;
+          report_date: string;
+          product_name: string;
+          quantity: number;
+          revenue: number;
+        }
+      >();
+
+      for (const order of allOrders) {
+        const date = new Date(order.created_at);
+
+        const orderDate = [
+          date.getFullYear(),
+          String(date.getMonth() + 1).padStart(2, "0"),
+          String(date.getDate()).padStart(2, "0"),
+        ].join("-");
+
+        if (orderDate !== nextDate) continue;
+
+        for (const item of order.items || []) {
+          const name = String(item.name || "İsimsiz ürün");
+          const quantity = Math.max(
+            0,
+            Number(item.quantity) || 1
+          );
+          const price = Math.max(0, Number(item.price) || 0);
+          const existing = products.get(name);
+
+          if (existing) {
+            existing.quantity += quantity;
+            existing.revenue += price * quantity;
+          } else {
+            products.set(name, {
+              id: products.size + 1,
+              report_date: nextDate,
+              product_name: name,
+              quantity,
+              revenue: price * quantity,
+            });
+          }
+        }
+      }
+
+      setDailyProductReports(
+        Array.from(products.values()).sort((a, b) =>
+          a.product_name.localeCompare(b.product_name, "tr")
+        )
       );
-    } finally {
-      setReportLoading(false);
+    } else {
+      setDailyProductReports([]);
     }
-  };
+  } catch (error) {
+    console.error("Raporlar yüklenemedi:", error);
+    alert(
+      "Raporlar yüklenemedi. Supabase bağlantısını ve report_settings tablosunu kontrol edin."
+    );
+  } finally {
+    setReportLoading(false);
+    setDailyDetailLoading(false);
+  }
+};
+
+
 
   /* =========================================================
      GÜNLÜK ÜRÜN DETAYINI GETİR
      ========================================================= */
 
-  const fetchDailyProductReport = async (reportDate: string) => {
+  
+
+const fetchDailyProductReport = async (reportDate: string) => {
   setDailyDetailLoading(true);
 
   try {
-    const { data, error } = await supabase
-      .from("daily_product_report")
-      .select("id, report_date, product_name, quantity, revenue")
-      .eq("report_date", reportDate)
-      .order("quantity", { ascending: false });
+    const products = new Map<
+      string,
+      {
+        id: number;
+        report_date: string;
+        product_name: string;
+        quantity: number;
+        revenue: number;
+      }
+    >();
 
-    if (error) {
-      throw error;
+    for (const order of reportOrders) {
+      const date = new Date(order.created_at);
+
+      const orderDate = [
+        date.getFullYear(),
+        String(date.getMonth() + 1).padStart(2, "0"),
+        String(date.getDate()).padStart(2, "0"),
+      ].join("-");
+
+      if (orderDate !== reportDate) continue;
+
+      for (const item of order.items || []) {
+        const name = String(item.name || "İsimsiz ürün");
+        const quantity = Math.max(
+          0,
+          Number(item.quantity) || 1
+        );
+        const price = Math.max(0, Number(item.price) || 0);
+        const existing = products.get(name);
+
+        if (existing) {
+          existing.quantity += quantity;
+          existing.revenue += price * quantity;
+        } else {
+          products.set(name, {
+            id: products.size + 1,
+            report_date: reportDate,
+            product_name: name,
+            quantity,
+            revenue: price * quantity,
+          });
+        }
+      }
     }
 
-    const products: DailyProductReport[] = (data || []).map((product: any) => ({
-      id: Number(product.id),
-      report_date: product.report_date,
-      product_name: product.product_name || "",
-      quantity: Number(product.quantity) || 0,
-      revenue: Number(product.revenue) || 0,
-    }));
-
-    setDailyProductReports(products);
-
-    console.log("Günlük ürün raporu:", reportDate, products);
-  } catch (error: any) {
-    console.error("Günlük ürün raporu alınamadı:", error);
-
-    setDailyProductReports([]);
-
-    alert(
-      `Günlük ürün raporu alınamadı.\n\n${
-        error?.message || "Bilinmeyen hata"
-      }`
+    setDailyProductReports(
+      Array.from(products.values()).sort((a, b) =>
+        b.quantity - a.quantity
+      )
     );
+  } catch (error) {
+    console.error("Günlük ürün raporu alınamadı:", error);
+    setDailyProductReports([]);
+    alert("Günlük ürün detayları alınamadı.");
   } finally {
     setDailyDetailLoading(false);
   }
 };
 
+
+
   /* =========================================================
      GÜN DETAYINI AÇ
      ========================================================= */
 
-  const openDailyReport = async (reportDate: string) => {
+  
+
+const openDailyReport = async (reportDate: string) => {
   if (selectedReportDate === reportDate) {
-    setSelectedReportDate(null);
+    setSelectedReportDate("");
     setDailyProductReports([]);
     return;
   }
 
   setSelectedReportDate(reportDate);
-  setDailyProductReports([]);
-
   await fetchDailyProductReport(reportDate);
 };
+
 
   /* =========================================================
      KATEGORİLERİ GETİR
@@ -3114,8 +3109,8 @@ console.log("dailyError:", dailyError);
       </h2>
 
       <p className="mt-0.5 text-[10px] text-gray-500">
-        {getCurrentMonthName()} {new Date().getFullYear()} satış raporu
-      </p>
+  Günlük satış raporları
+</p>
     </div>
 
     <button
@@ -3147,7 +3142,7 @@ console.log("dailyError:", dailyError);
           GÜNLÜK RAPOR — ANA EKRAN
           ===================================================== */}
 
-      {!showMonthlyReport && (
+      {(
 
         <div className="mt-4">
 
@@ -3163,15 +3158,7 @@ console.log("dailyError:", dailyError);
               </p>
             </div>
 
-            <button
-              type="button"
-              onClick={() =>
-                setShowMonthlyReport(true)
-              }
-              className="rounded-lg border border-[#061b3d] bg-white px-3 py-1.5 text-[10px] font-bold text-[#061b3d] transition hover:bg-gray-50 active:scale-95"
-            >
-              📊 Aylık Rapor
-            </button>
+            
 
           </div>
 
@@ -3426,258 +3413,7 @@ console.log("dailyError:", dailyError);
 
       )}
 
-      {/* =====================================================
-          AYLIK RAPOR
-          ===================================================== */}
-
-      {showMonthlyReport && (
-
-        <div className="mt-4">
-
-          <div className="flex items-center justify-between gap-2">
-
-            <div>
-              <h3 className="text-sm font-bold text-[#061b3d]">
-                📊 {getCurrentMonthName()} {new Date().getFullYear()} Raporu
-              </h3>
-
-              <p className="mt-0.5 text-[10px] text-gray-500">
-                Gün gün aylık satış özeti
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={() =>
-                setShowMonthlyReport(false)
-              }
-              className="rounded-lg bg-[#061b3d] px-3 py-1.5 text-[10px] font-bold text-white transition hover:bg-[#0b2d62] active:scale-95"
-            >
-              ← Günlük Rapor
-            </button>
-
-          </div>
-
-          {/* AYLIK TOPLAM */}
-
-          <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
-
-            <div className="rounded-xl bg-[#061b3d] p-3 text-white">
-
-              <p className="text-[9px] font-semibold text-gray-300">
-                💰 AYLIK CİRO
-              </p>
-
-              <p className="mt-1 text-xl font-bold text-[#e8c866]">
-                {formatCurrency(
-                  monthlyReport?.total_revenue || 0
-                )}
-              </p>
-
-            </div>
-
-            <div className="rounded-xl bg-gray-100 p-3">
-
-              <p className="text-[9px] font-semibold text-gray-500">
-                🧾 TOPLAM SİPARİŞ
-              </p>
-
-              <p className="mt-1 text-xl font-bold text-[#061b3d]">
-                {monthlyReport?.total_orders || 0}
-              </p>
-
-            </div>
-
-            <div className="rounded-xl bg-gray-100 p-3">
-
-              <p className="text-[9px] font-semibold text-gray-500">
-                🍽️ SATILAN ÜRÜN
-              </p>
-
-              <p className="mt-1 text-xl font-bold text-[#061b3d]">
-                {monthlyReport?.total_items || 0}
-              </p>
-
-            </div>
-
-          </div>
-
-          {/* GÜN GÜN AYLIK LİSTE */}
-
-          <div className="mt-4">
-
-            <h4 className="text-xs font-bold text-[#061b3d]">
-              📅 Gün Gün Satışlar
-            </h4>
-
-            <p className="mt-0.5 text-[9px] text-gray-500">
-              Bir güne tıklayarak o günün ürünlerini görebilirsiniz.
-            </p>
-
-            <div className="mt-2 space-y-2">
-
-              {dailyReports.length === 0 ? (
-
-                <div className="rounded-xl bg-gray-50 p-5 text-center">
-
-                  <div className="text-2xl">
-                    📅
-                  </div>
-
-                  <p className="mt-2 text-[10px] font-semibold text-gray-500">
-                    Bu ay henüz satış bulunmuyor.
-                  </p>
-
-                </div>
-
-              ) : (
-
-                dailyReports.map((report) => {
-
-                  const isSelected =
-                    selectedReportDate === report.report_date;
-
-                  return (
-
-                    <div
-                      key={`monthly-${report.id}`}
-                      className="overflow-hidden rounded-xl border border-gray-200"
-                    >
-
-                      <button
-                        type="button"
-                        onClick={() =>
-                          openDailyReport(
-                            report.report_date
-                          )
-                        }
-                        className={`w-full p-3 text-left transition ${
-                          isSelected
-                            ? "bg-blue-50"
-                            : "bg-white hover:bg-gray-50"
-                        }`}
-                      >
-
-                        <div className="flex items-center justify-between gap-3">
-
-                          <div>
-
-                            <p className="text-xs font-bold text-[#061b3d]">
-                              📅{" "}
-                              {formatReportDate(
-                                report.report_date
-                              )}
-                            </p>
-
-                            <p className="mt-1 text-[9px] text-gray-500">
-                              {report.total_orders} sipariş •{" "}
-                              {report.total_items} ürün
-                            </p>
-
-                          </div>
-
-                          <div className="flex items-center gap-3">
-
-                            <p className="text-sm font-bold text-green-700">
-                              {formatCurrency(
-                                report.total_revenue
-                              )}
-                            </p>
-
-                            <span className="text-lg text-gray-400">
-                              {isSelected ? "⌃" : "⌄"}
-                            </span>
-
-                          </div>
-
-                        </div>
-
-                      </button>
-
-                      {isSelected && (
-
-                        <div className="border-t border-gray-200 bg-gray-50 p-3">
-
-                          <div className="mb-2 flex items-center justify-between">
-
-                            <h5 className="text-xs font-bold text-[#061b3d]">
-                              🍽️ Satılan Ürünler
-                            </h5>
-
-                            <span className="text-[10px] font-bold text-green-700">
-                              {formatCurrency(
-                                report.total_revenue
-                              )}
-                            </span>
-
-                          </div>
-
-                          {dailyDetailLoading ? (
-
-                            <div className="rounded-lg bg-white p-4 text-center text-[10px] text-gray-500">
-                              ⏳ Ürünler yükleniyor...
-                            </div>
-
-                          ) : dailyProductReports.length === 0 ? (
-
-                            <div className="rounded-lg bg-white p-4 text-center text-[10px] text-gray-500">
-                              Bu gün için ürün detayı bulunamadı.
-                            </div>
-
-                          ) : (
-
-                            <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
-
-                              {dailyProductReports.map(
-                                (product) => (
-
-                                  <div
-                                    key={`monthly-product-${product.id}`}
-                                    className="grid grid-cols-[1fr_auto_auto] gap-2 border-b border-gray-100 px-3 py-2 last:border-b-0"
-                                  >
-
-                                    <p className="truncate text-[10px] font-bold text-gray-800">
-                                      {product.product_name}
-                                    </p>
-
-                                    <span className="text-center text-[10px] font-bold text-[#061b3d]">
-                                      {product.quantity} adet
-                                    </span>
-
-                                    <span className="text-right text-[10px] font-bold text-green-700">
-                                      {formatCurrency(
-                                        product.revenue
-                                      )}
-                                    </span>
-
-                                  </div>
-
-                                )
-                              )}
-
-                            </div>
-
-                          )}
-
-                        </div>
-
-                      )}
-
-                    </div>
-
-                  );
-
-                })
-
-              )}
-
-            </div>
-
-          </div>
-
-        </div>
-
-      )}
+      
 
     </>
 
