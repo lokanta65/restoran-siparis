@@ -42,6 +42,17 @@ useEffect(() => {
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] =
     useState<number | null>(null);
+  
+    const [printOrder, setPrintOrder] = useState<Order | null>(null);
+
+const handlePrintOrder = (order: Order) => {
+  setPrintOrder(order);
+
+  window.setTimeout(() => {
+    window.print();
+  }, 200);
+};
+
 
   /* =========================================================
      SİPARİŞLERİ GETİR
@@ -372,6 +383,17 @@ useEffect(() => {
 
           </div>
         </div>
+
+        <div className="bg-white px-5 pt-4">
+          <button
+            type="button"
+            onClick={() => handlePrintOrder(order)}
+            className="w-full rounded-xl bg-gray-900 px-4 py-3 font-bold text-white transition hover:bg-gray-700 active:scale-[0.99]"
+          >
+            🖨️ Fiş Yazdır
+          </button>
+        </div>
+
 
         {/* ÜRÜNLER */}
 
@@ -787,6 +809,170 @@ hazır olduğunda siparişi hazır olarak işaretleyin.
         )}
 
       </section>
+      
+      {printOrder && (
+        <section id="print-receipt">
+          <div className="receipt-header">
+            <h1>VAN EDREMİT JANDARMA SOSYAL TESİS</h1>
+            <p>MUTFAK SİPARİŞ FİŞİ</p>
+            <hr />
+          </div>
+
+          <p>
+            <strong>Masa:</strong> {printOrder.table_number}
+          </p>
+
+          <p>
+            <strong>Sipariş No:</strong>{" "}
+            {printOrder.daily_order_number ?? printOrder.id}
+          </p>
+
+          <p>
+            <strong>Tarih:</strong>{" "}
+            {new Date(printOrder.created_at).toLocaleString("tr-TR")}
+          </p>
+
+          <hr />
+
+          <table>
+            <thead>
+              <tr>
+                <th>Ürün</th>
+                <th>Ad.</th>
+                <th>Fiyat</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Array.isArray(printOrder.items) &&
+                printOrder.items.map((item, index) => (
+                  <tr key={`${item.name}-${index}`}>
+                    <td>{item.name}</td>
+                    <td>{item.quantity || 1}</td>
+                    <td>
+                      {(
+                        Number(item.price) *
+                        Number(item.quantity || 1)
+                      ).toLocaleString("tr-TR")}{" "}
+                      TL
+                    </td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+
+          <hr />
+
+          <p className="receipt-total">
+            TOPLAM: {Number(printOrder.total).toLocaleString("tr-TR")} TL
+          </p>
+
+          {printOrder.special_request?.trim() && (
+            <div className="receipt-request">
+              <strong>Özel İstek:</strong>
+              <p>{printOrder.special_request}</p>
+            </div>
+          )}
+
+          <p className="receipt-footer">Hazırlayan: Mutfak</p>
+        </section>
+      )}
+      
+      <style jsx global>{`
+        #print-receipt {
+          display: none;
+        }
+
+        @media print {
+          @page {
+            size: 80mm auto;
+            margin: 3mm;
+          }
+
+          body * {
+            visibility: hidden !important;
+          }
+
+          #print-receipt,
+          #print-receipt * {
+            visibility: visible !important;
+          }
+
+          #print-receipt {
+            display: block !important;
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 74mm;
+            padding: 0;
+            margin: 0;
+            color: #000 !important;
+            background: #fff !important;
+            font-family: Arial, sans-serif;
+            font-size: 11px;
+            line-height: 1.4;
+          }
+
+          #print-receipt h1 {
+            font-size: 17px;
+            font-weight: bold;
+            text-align: center;
+            margin: 0 0 4px;
+          }
+
+          #print-receipt .receipt-header,
+          #print-receipt .receipt-footer {
+            text-align: center;
+          }
+
+          #print-receipt table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            margin: 8px 0;
+          }
+
+          #print-receipt th,
+          #print-receipt td {
+            padding: 4px 1px;
+            text-align: left;
+            overflow-wrap: anywhere;
+            border-bottom: 1px dashed #999;
+          }
+
+          #print-receipt th:first-child,
+          #print-receipt td:first-child {
+            width: 48%;
+          }
+
+          #print-receipt th:nth-child(2),
+          #print-receipt td:nth-child(2) {
+            width: 12%;
+            text-align: center;
+          }
+
+          #print-receipt th:last-child,
+          #print-receipt td:last-child {
+            width: 40%;
+            text-align: right;
+          }
+
+          #print-receipt .receipt-total {
+            font-size: 15px;
+            font-weight: bold;
+            text-align: right;
+          }
+
+          #print-receipt .receipt-request {
+            border-top: 1px dashed #000;
+            padding-top: 6px;
+            overflow-wrap: anywhere;
+          }
+
+          #print-receipt .receipt-footer {
+            margin-top: 12px;
+          }
+        }
+      `}</style>
 
     </main>
   );
