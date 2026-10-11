@@ -191,50 +191,44 @@ export default function GarsonPage() {
     }
   };
 
-  const closeTable = async (tableNumber: number) => {
-    const confirmed = window.confirm(
-      `Masa ${tableNumber} hesabını kapatmak istediğinize emin misiniz?\n\nBu işlem masaya ait siparişleri sistemden tamamen silecektir.`
-    );
+  
+const closeTable = async (tableNumber: number) => {
+  const confirmed = window.confirm(
+    `Masa ${tableNumber} hesabını kapatmak istediğinize emin misiniz?\n\nSipariş kayıtları silinmeyecek, günlük raporlarda korunacaktır.`
+  );
 
-    if (!confirmed) {
-      return;
-    }
+  if (!confirmed) {
+    return;
+  }
 
-    const { data: deletedData, error } = await supabase
-      .from("orders")
-      .delete()
-      .eq("table_number", tableNumber)
-      .eq("is_closed", false)
-      .select("id");
+  const { data, error } = await supabase
+    .from("orders")
+    .update({ is_closed: true })
+    .eq("table_number", tableNumber)
+    .eq("is_closed", false)
+    .select("id");
 
-    if (error) {
-      console.error(
-        "Hesap kapatılamadı:",
-        error
-      );
+  if (error) {
+    console.error("Hesap kapatılamadı:", error);
 
-      alert(
-        `Masa hesabı kapatılamadı.\n\n${error.message}`
-      );
+    alert(`Masa hesabı kapatılamadı.\n\n${error.message}`);
+    return;
+  }
 
-      return;
-    }
+  setOrders((currentOrders) =>
+    currentOrders.filter(
+      (order) => order.table_number !== tableNumber
+    )
+  );
 
-    setOrders((currentOrders) =>
-      currentOrders.filter(
-        (order) =>
-          order.table_number !== tableNumber
-      )
-    );
+  setSelectedTable(null);
 
-    setSelectedTable(null);
+  alert(
+    `Masa ${tableNumber} hesabı kapatıldı.\n\n` +
+    `${data?.length || 0} sipariş kaydı korundu.`
+  );
+};
 
-    alert(
-      `Masa ${tableNumber} hesabı kapatıldı.\n\n${
-        deletedData?.length || 0
-      } sipariş sistemden tamamen silindi.`
-    );
-  };
 
   const statusText = (status: string) => {
     switch (status) {

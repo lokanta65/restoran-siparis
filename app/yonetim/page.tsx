@@ -109,6 +109,8 @@ export default function YonetimPage() {
     
   const [reportOrders, setReportOrders] = useState<ReportOrder[]>([]);
 
+  const [deletingReports, setDeletingReports] = useState(false);
+
   /* =========================================================
      RAPOR STATE
      ========================================================= */
@@ -538,6 +540,62 @@ const fetchReports = async () => {
 };
 
 
+/* =========================================================
+   TESLİM EDİLMİŞ SİPARİŞLERİ VE RAPORLARI SİL
+   ========================================================= */
+
+const deleteReports = async () => {
+  if (deletingReports) return;
+
+  const confirmed = window.confirm(
+    "DİKKAT: RAPORLAR SİLİNECEK!\n\n" +
+    "Bugün dâhil tüm teslim edilmiş siparişler " +
+    "veritabanından kalıcı olarak silinecektir.\n\n" +
+    "Günlük ciro ve satış geçmişi kaybolacaktır.\n\n" +
+    "Yeni ve devam eden siparişler korunacaktır.\n\n" +
+    "Bu işlemi yapmak istediğinize emin misiniz?"
+  );
+
+  if (!confirmed) return;
+
+  setDeletingReports(true);
+
+  try {
+    const { data: deletedOrders, error } = await supabase
+      .from("orders")
+      .delete()
+      .eq("status", "teslim edildi")
+      .select("id");
+
+    if (error) {
+      throw error;
+    }
+
+    const deletedCount = deletedOrders?.length ?? 0;
+
+    setReportOrders([]);
+    setDailyReports([]);
+    setDailyProductReports([]);
+    setSelectedReportDate(null);
+
+    await fetchReports();
+
+    alert(
+      `İşlem tamamlandı.\n\n` +
+      `${deletedCount} teslim edilmiş sipariş silindi.\n` +
+      "Yeni ve devam eden siparişler hedeflenmedi."
+    );
+  } catch (error: any) {
+    console.error("Rapor silme hatası:", error);
+
+    alert(
+      "Raporlar silinemedi.\n\n" +
+      (error?.message || "Bilinmeyen bir hata oluştu.")
+    );
+  } finally {
+    setDeletingReports(false);
+  }
+};
 
   /* =========================================================
      GÜNLÜK ÜRÜN DETAYINI GETİR
@@ -3113,14 +3171,27 @@ const openDailyReport = async (reportDate: string) => {
 </p>
     </div>
 
-    <button
-      type="button"
-      onClick={fetchReports}
-      disabled={reportLoading}
-      className="rounded-lg bg-[#061b3d] px-3 py-1.5 text-[10px] font-bold text-white transition hover:bg-[#0b2d62] disabled:opacity-50 active:scale-95"
-    >
-      {reportLoading ? "⏳" : "🔄 Yenile"}
-    </button>
+    
+<div className="flex items-center gap-2">
+  <button
+    type="button"
+    onClick={deleteReports}
+    disabled={reportLoading || deletingReports}
+    className="rounded-lg bg-red-600 px-3 py-1.5 text-[10px] font-bold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50 active:scale-95"
+  >
+    {deletingReports ? "⏳ Siliniyor..." : "🗑️ Raporları Sil"}
+  </button>
+
+  <button
+    type="button"
+    onClick={fetchReports}
+    disabled={reportLoading || deletingReports}
+    className="rounded-lg bg-[#061b3d] px-3 py-1.5 text-[10px] font-bold text-white transition hover:bg-[#0b2d62] disabled:cursor-not-allowed disabled:opacity-50 active:scale-95"
+  >
+    {reportLoading ? "⏳" : "🔄 Yenile"}
+  </button>
+</div>
+
 
   </div>
 
